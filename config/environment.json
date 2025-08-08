@@ -1,0 +1,14 @@
+{
+  "development": {
+    "log_level": "DEBUG",
+    "output_directory": "./reports",
+    "temp_directory": "./temp",
+    "max_workers": 4
+  },
+  "production": {
+    "log_level": "INFO",
+    "output_directory": "/var/aar/reports",
+    "temp_directory": "/tmp/aar",
+    "max_workers": 8
+  }
+}

@@ -1,0 +1,1 @@
+# Squad-level report generator

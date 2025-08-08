@@ -1,0 +1,118 @@
+{
+    "csv_columns": {
+        "callsign": [
+            "Callsign",
+            "callsign",
+            "SoldierID"
+        ],
+        "squad": [
+            "Platoon",
+            "Squad",
+            "Unit"
+        ],
+        "platoon": [
+            "Platoon"
+        ],
+        "playerid": [
+            "PlayerID",
+            "PID"
+        ],
+        "casualtystate": [
+            "Casualty_State",
+            "Status",
+            "InjuryStatus"
+        ],
+        "processedtimegmt": [
+            "Time_Step",
+            "Timestamp",
+            "processedtimegmt"
+        ],
+        "latitude": [
+            "Latitude",
+            "Lat"
+        ],
+        "longitude": [
+            "Longitude",
+            "Long"
+        ],
+        "posture": [
+            "Posture",
+            "Stance"
+        ],
+        "heartrate": [
+            "Heart_Rate",
+            "HR",
+            "BPM"
+        ],
+        "stepcount": [
+            "Step_Count",
+            "Steps"
+        ],
+        "temp": [
+            "Temperature",
+            "Temp"
+        ],
+        "falldetected": [
+            "Fall_Detection",
+            "FallDetected"
+        ],
+        "battery": [
+            "Battery",
+            "Battery_Level"
+        ],
+        "rssi": [
+            "RSSI",
+            "SignalStrength"
+        ],
+        "weapon": [
+            "Weapon",
+            "Weapon_Type"
+        ],
+        "shootercallsign": [
+            "Shooter_Callsign",
+            "Shooter"
+        ],
+        "munition": [
+            "Munition",
+            "Ammo"
+        ],
+        "hitzone": [
+            "Hit_Zone",
+            "ImpactZone"
+        ],
+        "mcs": [
+            "MCS"
+        ],
+        "nexthop": [
+            "Next_Hop"
+        ],
+        "ip": [
+            "IP_Address",
+            "IP"
+        ]
+    },
+    "data_types": {
+        "callsign": "string",
+        "squad": "string",
+        "platoon": "string",
+        "playerid": "string",
+        "casualtystate": "string",
+        "processedtimegmt": "datetime",
+        "latitude": "numeric",
+        "longitude": "numeric",
+        "posture": "string",
+        "heartrate": "numeric",
+        "stepcount": "numeric",
+        "temp": "numeric",
+        "falldetected": "numeric",
+        "battery": "numeric",
+        "rssi": "numeric",
+        "weapon": "string",
+        "shootercallsign": "string",
+        "munition": "string",
+        "hitzone": "string",
+        "mcs": "string",
+        "nexthop": "string",
+        "ip": "string"
+    }
+}

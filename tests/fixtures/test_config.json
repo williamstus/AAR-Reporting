@@ -1,0 +1,9 @@
+{
+    "test_data_path": "tests/fixtures/sample_data.csv",
+    "expected_soldiers": 5,
+    "test_timeout": 30,
+    "mock_responses": {
+        "analysis_engine": "success",
+        "report_generator": "success"
+    }
+}

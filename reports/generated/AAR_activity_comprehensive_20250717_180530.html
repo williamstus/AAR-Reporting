@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AAR - Activity Comprehensive</title>
+    <style>
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .report-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .report-header h1 {
+            font-size: 2.8em;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-weight: bold;
+        }
+        
+        .classification {
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            background: rgba(231, 76, 60, 0.9);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border: 2px solid white;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .executive-overview, .effectiveness-overview, .soldier-overview, .squad-overview, .safety-overview {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 35px;
+            border-radius: 15px;
+            margin-bottom: 35px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .mission-statement {
+            font-size: 1.2em;
+            margin-bottom: 25px;
+            font-style: italic;
+            opacity: 0.95;
+        }
+        
+        .key-metrics, .coordination-metrics, .safety-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+        
+        .metric-card, .coord-card, .safety-card {
+            background: rgba(255,255,255,0.15);
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .metric-card h3, .coord-card h3, .safety-card h3 {
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+        
+        .metric-value, .metric-large {
+            font-size: 2.2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .metric-subtitle {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .strategic-findings, .tactical-analysis, .risk-analysis {
+            margin: 40px 0;
+        }
+        
+        .findings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-top: 25px;
+        }
+        
+        .finding-card {
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 5px solid;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .finding-card.positive {
+            background: linear-gradient(135deg, #d5f4e6, #ffeaa7);
+            border-color: #00b894;
+        }
+        
+        .finding-card.attention {
+            background: linear-gradient(135deg, #fef9e7, #fab1a0);
+            border-color: #fdcb6e;
+        }
+        
+        .command-recommendations, .improvement-plan, .development-plan, .safety-recommendations {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            padding: 35px;
+            border-radius: 15px;
+            margin: 35px 0;
+        }
+        
+        .recommendation-priority, .recommendation-tier {
+            background: rgba(255,255,255,0.8);
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid #8e44ad;
+        }
+        
+        .effectiveness-score {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 50px;
+            margin: 35px 0;
+            flex-wrap: wrap;
+        }
+        
+        .score-circle {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            position: relative;
+            background: linear-gradient(135deg, #00b894, #00cec9);
+        }
+        
+        .score-circle.pending {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        }
+        
+        .score-number {
+            font-size: 3.5em;
+            font-weight: bold;
+        }
+        
+        .score-label {
+            font-size: 1em;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+        
+        .score-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 25px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            min-width: 300px;
+        }
+        
+        .breakdown-item .label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .breakdown-item .value {
+            font-weight: bold;
+        }
+        
+        .breakdown-item .value.excellent { color: #00b894; }
+        .breakdown-item .value.good { color: #0984e3; }
+        .breakdown-item .value.warning { color: #fdcb6e; }
+        .breakdown-item .value.pending { color: #636e72; }
+        
+        .assessment-table, .risk-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .assessment-table th, .risk-table th {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 18px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .assessment-table td, .risk-table td {
+            padding: 15px 18px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .assessment-table tr.success td:nth-child(2) {
+            color: #00b894;
+            font-weight: bold;
+        }
+        
+        .assessment-table tr.warning td:nth-child(2) {
+            color: #fdcb6e;
+            font-weight: bold;
+        }
+        
+        .risk-table tr.low-risk {
+            background: rgba(0, 184, 148, 0.1);
+        }
+        
+        .risk-table tr.medium-risk {
+            background: rgba(253, 203, 110, 0.1);
+        }
+        
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 25px 0;
+        }
+        
+        .performance-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-top: 4px solid #3498db;
+        }
+        
+        .rating-badge {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 15px 0;
+            display: inline-block;
+        }
+        
+        .detailed-assessment {
+            margin: 35px 0;
+        }
+        
+        .assessment-domain {
+            background: #f8f9fa;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .development-recommendation, .squad-recommendation, .safety-recommendation {
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 4px solid #8e44ad;
+        }
+        
+        .safety-recommendation.priority-high {
+            border-left-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.05);
+        }
+        
+        .safety-recommendation.priority-medium {
+            border-left-color: #f39c12;
+            background: rgba(243, 156, 18, 0.05);
+        }
+        
+        .safety-recommendation.priority-low {
+            border-left-color: #27ae60;
+            background: rgba(39, 174, 96, 0.05);
+        }
+        
+        .coordination-factors {
+            margin: 25px 0;
+        }
+        
+        .factor-assessment {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #3498db;
+        }
+        
+        .factor-assessment.excellent {
+            border-left-color: #00b894;
+        }
+        
+        .factor-assessment.warning {
+            border-left-color: #fdcb6e;
+        }
+        
+        .analysis-summary {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+        
+        .domain-badges {
+            margin: 15px 0;
+        }
+        
+        .domain-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .domain-badge.active {
+            background: rgba(255,255,255,0.3);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        
+        .status-indicators {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+        
+        .status-card {
+            background: rgba(255,255,255,0.15);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .professional-analysis {
+            margin: 30px 0;
+        }
+        
+        .findings-list {
+            margin: 20px 0;
+        }
+        
+        .finding-item {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #3498db;
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .footer-classification {
+            background: rgba(231, 76, 60, 0.9);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: inline-block;
+            border: 2px solid white;
+        }
+        
+        .footer p {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+        
+        /* Print Optimization */
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+            
+            .classification, .footer-classification {
+                background: red !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+            }
+            
+            .report-header, .executive-overview, .effectiveness-overview {
+                break-inside: avoid;
+            }
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .key-metrics, .coordination-metrics, .safety-metrics, .performance-grid, .findings-grid, .effectiveness-score {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                margin: 10px;
+                border-radius: 0;
+            }
+            
+            .effectiveness-score {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .score-breakdown {
+                width: 100%;
+            }
+            
+            .breakdown-item {
+                min-width: auto;
+            }
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            
+        <div class="report-header">
+            <h1>Activity Comprehensive Analysis</h1>
+            <div class="classification">FOR OFFICIAL USE ONLY</div>
+        </div>
+        
+        <div class="analysis-overview">
+            <h2>Professional Analysis Overview</h2>
+            <p>This activity comprehensive provides comprehensive military-grade analysis based on current operational data.</p>
+            
+            <div class="status-indicators">
+                <div class="status-card success">
+                    <h3>Analysis Status</h3>
+                    <div class="status-value">COMPLETE</div>
+                </div>
+                
+                <div class="status-card good">
+                    <h3>Data Quality</h3>
+                    <div class="status-value">HIGH</div>
+                </div>
+                
+                <div class="status-card good">
+                    <h3>Report Format</h3>
+                    <div class="status-value">PROFESSIONAL</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="professional-analysis">
+            <h2>Key Findings</h2>
+            <p>Comprehensive analysis reveals strong operational performance with specific recommendations for continued excellence and strategic improvement.</p>
+            
+            <div class="findings-list">
+                <div class="finding-item"><h4>ACTIVITY Domain</h4><p>Analysis completed with actionable insights and strategic recommendations for operational enhancement.</p></div><div class="finding-item"><h4>EQUIPMENT Domain</h4><p>Analysis completed with actionable insights and strategic recommendations for operational enhancement.</p></div><div class="finding-item"><h4>ENVIRONMENTAL Domain</h4><p>Analysis completed with actionable insights and strategic recommendations for operational enhancement.</p></div>
+            </div>
+        </div>
+        
+        <div class="strategic-recommendations">
+            <h2>Strategic Recommendations</h2>
+            
+            <div class="recommendation-tier">
+                <h3>🎯 Primary Objectives</h3>
+                <ol>
+                    <li>Maintain current operational excellence standards</li><li>Implement identified optimization strategies</li><li>Enhance cross-domain coordination protocols</li>
+                </ol>
+            </div>
+            
+            <div class="recommendation-tier">
+                <h3>📋 Supporting Actions</h3>
+                <ol>
+                    <li>Develop advanced monitoring and analytics capabilities</li><li>Establish regular performance review and improvement cycles</li><li>Create specialized training programs based on identified needs</li>
+                </ol>
+            </div>
+        </div>
+        
+        </div>
+        <div class="footer">
+            <div class="footer-classification">FOR OFFICIAL USE ONLY</div>
+            <p><strong>Generated by AAR System v2.0 (Professional Military Edition)</strong></p>
+            <p>Report ID: AAR-20250717_180530 | Security Classification: FOR OFFICIAL USE ONLY</p>
+            <p>Generated on Thursday, July 17, 2025 at 18:05:30 | Report Type: Activity Comprehensive</p>
+            <p>Distribution: Command Staff, Operations, Training Division</p>
+        </div>
+    </div>
+</body>
+</html>

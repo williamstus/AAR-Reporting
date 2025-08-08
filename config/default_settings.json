@@ -1,0 +1,75 @@
+{
+    "data_processing": {
+        "chunk_size": 10000,
+        "validation_rules": {
+            "required_columns": [
+                "callsign",
+                "heartrate",
+                "temp",
+                "stepcount"
+            ],
+            "numeric_columns": [
+                "heartrate",
+                "temp",
+                "battery",
+                "rssi",
+                "stepcount"
+            ],
+            "date_columns": [
+                "processedtimegmt"
+            ],
+            "boolean_columns": [
+                "falldetected"
+            ],
+            "categorical_columns": [
+                "casualtystate"
+            ]
+        }
+    },
+    "scoring": {
+        "performance_weights": {
+            "activity_level": 0.2,
+            "equipment_status": 0.2,
+            "communication_quality": 0.15,
+            "physiological_health": 0.45
+        },
+        "safety_thresholds": {
+            "max_heart_rate": 190,
+            "min_heart_rate": 60,
+            "max_temperature": 104,
+            "min_temperature": 95,
+            "min_battery": 20,
+            "critical_battery": 10
+        }
+    },
+    "reporting": {
+        "output_directory": "reports/enhanced",
+        "template_directory": "templates",
+        "supported_formats": [
+            "HTML",
+            "PDF",
+            "JSON"
+        ],
+        "default_format": "HTML",
+        "available_report_types": [
+            "INDIVIDUAL_SOLDIER",
+            "SQUAD_SUMMARY",
+            "SAFETY_REPORT",
+            "PERFORMANCE_COMPARISON"
+        ],
+        "template_config": {
+            "INDIVIDUAL_SOLDIER": "individual_soldier_template.html",
+            "SQUAD_SUMMARY": "squad_summary_template.html",
+            "SAFETY_REPORT": "safety_report_template.html"
+        },
+        "filename_format": "report_{callsign}_{timestamp}.{format}"
+    },
+    "gui": {
+        "window_size": {
+            "width": 1200,
+            "height": 900
+        },
+        "theme": "dark",
+        "font": "Arial"
+    }
+}

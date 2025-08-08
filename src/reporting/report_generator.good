@@ -1,0 +1,1586 @@
+#!/usr/bin/env python3
+"""
+Enhanced Report Generator - ICD Compliant Implementation
+Fully compliant with Interface Control Document and Requirements Specifications
+UPDATED: Compatible with original main.py initialization pattern
+"""
+
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Optional, Any, Tuple
+from dataclasses import dataclass
+from enum import Enum
+import json
+import logging
+
+
+class RiskLevel(Enum):
+    """Risk assessment levels per ICD specification"""
+    LOW = "LOW"
+    MODERATE = "MODERATE"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class PerformanceRating(Enum):
+    """Performance rating categories per ICD"""
+    EXCELLENT = "EXCELLENT"
+    GOOD = "GOOD"
+    SATISFACTORY = "SATISFACTORY"
+    NEEDS_IMPROVEMENT = "NEEDS_IMPROVEMENT"
+    CRITICAL = "CRITICAL"
+
+
+class DataQualityLevel(Enum):
+    """Data quality assessment levels"""
+    EXCELLENT = "EXCELLENT"  # >95% complete
+    GOOD = "GOOD"            # >85% complete
+    FAIR = "FAIR"            # >70% complete
+    POOR = "POOR"            # <70% complete
+
+
+@dataclass
+class HeartRateZones:
+    """Heart rate zone distribution per safety framework"""
+    green_zone: int = 0      # 60-140 BPM - Normal operation
+    yellow_zone: int = 0     # 140-170 BPM - Monitor closely
+    orange_zone: int = 0     # 170-190 BPM - Medical alert
+    red_zone: int = 0        # >190 or <60 BPM - Critical
+
+
+@dataclass
+class SafetyMetrics:
+    """Comprehensive safety assessment per ICD requirements"""
+    overall_safety_score: float = 100.0
+    temperature_risk: RiskLevel = RiskLevel.LOW
+    physiological_stress: RiskLevel = RiskLevel.LOW
+    equipment_risk: RiskLevel = RiskLevel.LOW
+    injury_risk: RiskLevel = RiskLevel.LOW
+    heart_rate_zones: HeartRateZones = None
+    medical_alerts: List[str] = None
+    temperature_incidents: int = 0
+    abnormal_hr_incidents: int = 0
+    
+    def __post_init__(self):
+        if self.heart_rate_zones is None:
+            self.heart_rate_zones = HeartRateZones()
+        if self.medical_alerts is None:
+            self.medical_alerts = []
+
+
+@dataclass
+class PhysicalPerformanceMetrics:
+    """Physical performance analysis per enhanced framework"""
+    total_steps: int = 0
+    avg_steps_per_period: float = 0.0
+    pre_battle_steps: int = 0
+    battle_steps: int = 0
+    position_changes: int = 0
+    position_change_score: float = 0.0
+    step_count_score: float = 0.0
+    movement_pattern_score: float = 0.0
+    fall_incidents: int = 0
+
+
+@dataclass
+class TacticalMetrics:
+    """Tactical positioning and behavior analysis"""
+    posture_distribution: Dict[str, float] = None
+    dominant_posture: str = "Unknown"
+    tactical_positioning_score: float = 0.0
+    battle_posture_score: float = 0.0
+    engagement_effectiveness: float = 0.0
+    
+    def __post_init__(self):
+        if self.posture_distribution is None:
+            self.posture_distribution = {}
+
+
+@dataclass
+class EquipmentMetrics:
+    """Equipment status and performance impact"""
+    avg_battery: float = 0.0
+    min_battery: float = 100.0
+    low_battery_incidents: int = 0
+    critical_battery_incidents: int = 0
+    avg_rssi: float = 0.0
+    communication_quality: str = "Unknown"
+    equipment_score: float = 0.0
+
+
+@dataclass
+class CombatMetrics:
+    """Combat engagement and casualty analysis"""
+    final_casualty_state: str = "GOOD"
+    casualty_transitions: int = 0
+    combat_engagements: int = 0
+    time_to_casualty: Optional[float] = None
+    casualty_score_impact: float = 0.0
+    survival_time: Optional[float] = None
+
+
+@dataclass
+class PerformanceBreakdown:
+    """Detailed performance score breakdown per ICD requirements"""
+    base_score: float = 100.0
+    final_score: float = 100.0
+    total_deductions: float = 0.0
+    total_bonuses: float = 0.0
+    deduction_details: List[str] = None
+    bonus_details: List[str] = None
+    
+    def __post_init__(self):
+        if self.deduction_details is None:
+            self.deduction_details = []
+        if self.bonus_details is None:
+            self.bonus_details = []
+
+
+class BattleTimelineAnalyzer:
+    """Analyzes battle timeline per ICD FR-004 through FR-007"""
+    
+    def __init__(self, data: pd.DataFrame):
+        self.data = data
+        self.battle_start_time = None
+        self.battle_duration_minutes = 45  # Per ICD assumption
+        
+    def detect_battle_period(self) -> Tuple[bool, Optional[datetime], Optional[datetime]]:
+        """
+        Detect battle period - last 45 minutes per ICD FR-006
+        Returns: (battle_detected, battle_start, battle_end)
+        """
+        if 'Time_Step' not in self.data.columns or len(self.data) == 0:
+            return False, None, None
+            
+        try:
+            # Ensure Time_Step is datetime
+            if not pd.api.types.is_datetime64_any_dtype(self.data['Time_Step']):
+                self.data['Time_Step'] = pd.to_datetime(self.data['Time_Step'])
+            
+            end_time = self.data['Time_Step'].max()
+            start_time = end_time - timedelta(minutes=self.battle_duration_minutes)
+            
+            # Check if we have at least 45 minutes of data
+            total_duration = (end_time - self.data['Time_Step'].min()).total_seconds() / 60
+            
+            if total_duration >= self.battle_duration_minutes:
+                self.battle_start_time = start_time
+                return True, start_time, end_time
+            else:
+                return False, None, None
+                
+        except Exception as e:
+            print(f"Error detecting battle period: {e}")
+            return False, None, None
+    
+    def get_battle_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Split data into pre-battle and battle periods per ICD FR-005
+        """
+        battle_detected, battle_start, battle_end = self.detect_battle_period()
+        
+        if not battle_detected:
+            return self.data.copy(), pd.DataFrame()
+        
+        pre_battle = self.data[self.data['Time_Step'] < battle_start].copy()
+        battle = self.data[self.data['Time_Step'] >= battle_start].copy()
+        
+        return pre_battle, battle
+
+
+class SafetyAnalyzer:
+    """Comprehensive safety analysis per ICD medical monitoring requirements"""
+    
+    def analyze_soldier_safety(self, soldier_data: pd.DataFrame) -> SafetyMetrics:
+        """
+        Analyze soldier safety metrics per ICD FR-008 through FR-011
+        """
+        safety = SafetyMetrics()
+        
+        # Heart rate safety analysis per ICD FR-009
+        if 'Heart_Rate' in soldier_data.columns:
+            self._analyze_heart_rate_safety(soldier_data, safety)
+        
+        # Temperature analysis per ICD FR-010
+        if 'Temperature' in soldier_data.columns:
+            self._analyze_temperature_safety(soldier_data, safety)
+        
+        # Equipment safety per requirements
+        if 'Battery' in soldier_data.columns:
+            self._analyze_equipment_safety(soldier_data, safety)
+        
+        # Calculate overall safety score
+        self._calculate_overall_safety_score(safety)
+        
+        return safety
+    
+    def _analyze_heart_rate_safety(self, data: pd.DataFrame, safety: SafetyMetrics):
+        """Heart rate safety analysis per enhanced framework zones"""
+        hr_data = data['Heart_Rate'].dropna()
+        if len(hr_data) == 0:
+            return
+        
+        # Zone classification per enhanced framework
+        safety.heart_rate_zones.green_zone = len(hr_data[(hr_data >= 60) & (hr_data <= 140)])
+        safety.heart_rate_zones.yellow_zone = len(hr_data[(hr_data > 140) & (hr_data <= 170)])
+        safety.heart_rate_zones.orange_zone = len(hr_data[(hr_data > 170) & (hr_data <= 190)])
+        safety.heart_rate_zones.red_zone = len(hr_data[(hr_data > 190) | (hr_data < 60)])
+        
+        # Medical alerts per ICD FR-009
+        safety.abnormal_hr_incidents = safety.heart_rate_zones.red_zone
+        
+        if safety.heart_rate_zones.red_zone > 0:
+            max_hr = hr_data.max()
+            min_hr = hr_data.min()
+            
+            if max_hr > 190:
+                safety.physiological_stress = RiskLevel.CRITICAL
+                safety.medical_alerts.append(f"CARDIAC EMERGENCY: {max_hr:.0f} BPM - Immediate medical intervention required")
+            
+            if min_hr < 60 and min_hr > 0:
+                safety.medical_alerts.append(f"BRADYCARDIA ALERT: {min_hr:.0f} BPM - Medical evaluation recommended")
+        
+        elif safety.heart_rate_zones.orange_zone > 0:
+            safety.physiological_stress = RiskLevel.HIGH
+            max_hr_orange = hr_data[hr_data > 170].max()
+            safety.medical_alerts.append(f"ELEVATED HR ALERT: {max_hr_orange:.0f} BPM - Monitor closely")
+    
+    def _analyze_temperature_safety(self, data: pd.DataFrame, safety: SafetyMetrics):
+        """Temperature safety analysis per ICD FR-010"""
+        temp_data = data['Temperature'].dropna()
+        if len(temp_data) == 0:
+            return
+        
+        # Heat stress incidents
+        heat_incidents = len(temp_data[temp_data > 104])  # Fahrenheit
+        cold_incidents = len(temp_data[temp_data < 95])   # Fahrenheit
+        
+        safety.temperature_incidents = heat_incidents + cold_incidents
+        
+        if heat_incidents > 0:
+            max_temp = temp_data.max()
+            if max_temp > 106:
+                safety.temperature_risk = RiskLevel.CRITICAL
+                safety.medical_alerts.append(f"HEAT EMERGENCY: {max_temp:.1f}°F - Immediate cooling required")
+            else:
+                safety.temperature_risk = RiskLevel.HIGH
+                safety.medical_alerts.append(f"Heat stress detected: {max_temp:.1f}°F")
+        
+        if cold_incidents > 0:
+            min_temp = temp_data.min()
+            safety.medical_alerts.append(f"Cold stress detected: {min_temp:.1f}°F")
+    
+    def _analyze_equipment_safety(self, data: pd.DataFrame, safety: SafetyMetrics):
+        """Equipment safety analysis"""
+        battery_data = data['Battery'].dropna()
+        if len(battery_data) == 0:
+            return
+        
+        min_battery = battery_data.min()
+        critical_incidents = len(battery_data[battery_data < 10])
+        low_incidents = len(battery_data[battery_data < 20])
+        
+        if critical_incidents > 0:
+            safety.equipment_risk = RiskLevel.CRITICAL
+            safety.medical_alerts.append(f"EQUIPMENT FAILURE RISK: {min_battery:.1f}% battery remaining")
+        elif low_incidents > 0:
+            safety.equipment_risk = RiskLevel.HIGH
+    
+    def _calculate_overall_safety_score(self, safety: SafetyMetrics):
+        """Calculate overall safety score per enhanced framework"""
+        score = 100.0
+        
+        # Heart rate impact
+        if safety.physiological_stress == RiskLevel.CRITICAL:
+            score -= 25
+        elif safety.physiological_stress == RiskLevel.HIGH:
+            score -= 15
+        
+        # Temperature impact
+        if safety.temperature_risk == RiskLevel.CRITICAL:
+            score -= 20
+        elif safety.temperature_risk == RiskLevel.HIGH:
+            score -= 10
+        
+        # Equipment impact
+        if safety.equipment_risk == RiskLevel.CRITICAL:
+            score -= 15
+        elif safety.equipment_risk == RiskLevel.HIGH:
+            score -= 8
+        
+        safety.overall_safety_score = max(0, score)
+
+
+class PerformanceScorer:
+    """
+    Performance scoring per ICD requirements and enhanced framework
+    Implements FR-016 through FR-023
+    """
+    
+    def __init__(self, battle_analyzer: BattleTimelineAnalyzer):
+        self.battle_analyzer = battle_analyzer
+    
+    def calculate_performance_score(self, callsign: str, soldier_data: pd.DataFrame, 
+                                  safety_metrics: SafetyMetrics) -> Tuple[float, PerformanceBreakdown]:
+        """
+        Calculate comprehensive performance score per ICD FR-016
+        """
+        breakdown = PerformanceBreakdown()
+        
+        # Get battle timeline data
+        pre_battle_data, battle_data = self.battle_analyzer.get_battle_data()
+        soldier_pre_battle = pre_battle_data[pre_battle_data['Callsign'] == callsign]
+        soldier_battle = battle_data[battle_data['Callsign'] == callsign]
+        
+        # Physical performance scoring
+        physical_score = self._score_physical_performance(soldier_pre_battle, soldier_battle, breakdown)
+        
+        # Tactical positioning scoring
+        tactical_score = self._score_tactical_positioning(soldier_battle, breakdown)
+        
+        # Equipment readiness scoring
+        equipment_score = self._score_equipment_performance(soldier_data, breakdown)
+        
+        # Casualty state impact per ICD FR-020
+        casualty_score = self._score_casualty_impact(soldier_data, breakdown)
+        
+        # Safety considerations (no penalties per ICD FR-021)
+        self._add_safety_considerations(safety_metrics, breakdown)
+        
+        # Calculate final score
+        final_score = max(0, min(100, breakdown.base_score + sum([
+            physical_score, tactical_score, equipment_score, casualty_score
+        ])))
+        
+        breakdown.final_score = final_score
+        breakdown.total_deductions = sum([float(d.split('-')[1].split(' ')[0]) 
+                                        for d in breakdown.deduction_details if '-' in d])
+        breakdown.total_bonuses = sum([float(b.split('+')[1].split(' ')[0]) 
+                                     for b in breakdown.bonus_details if '+' in b])
+        
+        return final_score, breakdown
+    
+    def _score_physical_performance(self, pre_battle: pd.DataFrame, battle: pd.DataFrame, 
+                                  breakdown: PerformanceBreakdown) -> float:
+        """Score physical performance per enhanced framework"""
+        score_change = 0
+        
+        # Step count analysis per enhanced framework
+        if 'Step_Count' in battle.columns and len(battle) > 0:
+            battle_steps = battle['Step_Count'].sum() if not battle['Step_Count'].isna().all() else 0
+            
+            # Battle period step scoring (enhanced framework 2.1)
+            if 1000 <= battle_steps <= 1200:
+                score_change += 5
+                breakdown.bonus_details.append(f"Optimal tactical movement: +5 points ({battle_steps} steps)")
+            elif battle_steps < 500:
+                score_change -= 3
+                breakdown.deduction_details.append(f"Insufficient tactical repositioning: -3 points ({battle_steps} steps)")
+            elif battle_steps > 2000:
+                score_change -= 5
+                breakdown.deduction_details.append(f"Excessive exposure/poor positioning: -5 points ({battle_steps} steps)")
+        
+        # Position change frequency per enhanced framework
+        if 'Posture' in battle.columns and len(battle) > 0:
+            posture_changes = self._count_posture_changes(battle['Posture'])
+            
+            if 3 <= posture_changes <= 5:
+                score_change += 3
+                breakdown.bonus_details.append(f"Good tactical movement: +3 points ({posture_changes} position changes)")
+            elif posture_changes == 0:
+                score_change -= 5
+                breakdown.deduction_details.append("Dangerous static positioning: -5 points (0 position changes)")
+            elif posture_changes > 5:
+                excess = posture_changes - 5
+                deduction = excess * 2
+                score_change -= deduction
+                breakdown.deduction_details.append(f"Excessive movement: -{deduction} points ({posture_changes} changes)")
+        
+        return score_change
+    
+    def _score_tactical_positioning(self, battle_data: pd.DataFrame, breakdown: PerformanceBreakdown) -> float:
+        """Score tactical positioning per enhanced framework 2.2"""
+        score_change = 0
+        
+        if 'Posture' in battle_data.columns and len(battle_data) > 0:
+            posture_dist = battle_data['Posture'].value_counts(normalize=True) * 100
+            
+            # Battle period posture distribution scoring
+            prone_pct = posture_dist.get('Prone', 0)
+            kneeling_pct = posture_dist.get('Kneeling', 0)
+            moving_pct = posture_dist.get('Moving', 0)
+            standing_pct = posture_dist.get('Standing', 0)
+            
+            # Prone scoring (60-70% optimal)
+            if 60 <= prone_pct <= 70:
+                score_change += 5
+                breakdown.bonus_details.append(f"Optimal prone positioning: +5 points ({prone_pct:.1f}%)")
+            
+            # Kneeling scoring (20-30% optimal)
+            if 20 <= kneeling_pct <= 30:
+                score_change += 3
+                breakdown.bonus_details.append(f"Good kneeling positioning: +3 points ({kneeling_pct:.1f}%)")
+            
+            # Moving scoring (5-15% optimal)
+            if 5 <= moving_pct <= 15:
+                score_change += 2
+                breakdown.bonus_details.append(f"Appropriate movement: +2 points ({moving_pct:.1f}%)")
+            
+            # Standing penalty (>10% penalized)
+            if standing_pct > 10:
+                excess_standing = standing_pct - 10
+                deduction = int(excess_standing // 5) * 3
+                if deduction > 0:
+                    score_change -= deduction
+                    breakdown.deduction_details.append(f"Excessive standing in combat: -{deduction} points ({standing_pct:.1f}%)")
+        
+        return score_change
+    
+    def _score_equipment_performance(self, soldier_data: pd.DataFrame, breakdown: PerformanceBreakdown) -> float:
+        """Score equipment performance per ICD requirements"""
+        score_change = 0
+        
+        # Battery performance per enhanced framework
+        if 'Battery' in soldier_data.columns:
+            battery_data = soldier_data['Battery'].dropna()
+            if len(battery_data) > 0:
+                min_battery = battery_data.min()
+                avg_battery = battery_data.mean()
+                
+                if min_battery < 10:
+                    score_change -= 15
+                    breakdown.deduction_details.append(f"Critical battery failure: -15 points ({min_battery:.1f}%)")
+                elif min_battery < 20:
+                    score_change -= 8
+                    breakdown.deduction_details.append(f"Low battery risk: -8 points ({min_battery:.1f}%)")
+        
+        # Communication quality per enhanced framework
+        if 'RSSI' in soldier_data.columns:
+            rssi_data = soldier_data['RSSI'].dropna()
+            if len(rssi_data) > 0:
+                avg_rssi = rssi_data.mean()
+                
+                if avg_rssi > -60:
+                    score_change += 3
+                    breakdown.bonus_details.append(f"Excellent communication: +3 points ({avg_rssi:.1f} dBm)")
+                elif avg_rssi < -80:
+                    score_change -= 5
+                    breakdown.deduction_details.append(f"Poor communication: -5 points ({avg_rssi:.1f} dBm)")
+        
+        return score_change
+    
+    def _score_casualty_impact(self, soldier_data: pd.DataFrame, breakdown: PerformanceBreakdown) -> float:
+        """Score casualty state impact per enhanced framework 2.3"""
+        score_change = 0
+        
+        if 'Casualty_State' in soldier_data.columns and len(soldier_data) > 0:
+            final_state = soldier_data['Casualty_State'].iloc[-1]
+            
+            # Enhanced casualty scoring
+            if final_state == 'WOUNDED':
+                score_change -= 15  # Increased from -10 per enhanced framework
+                breakdown.deduction_details.append("Wounded status: -15 points")
+            elif final_state in ['KIA', 'KILL']:
+                score_change -= 25  # Increased from -20 per enhanced framework
+                breakdown.deduction_details.append("KIA status: -25 points")
+            
+            # Multiple casualty incidents
+            casualty_changes = len(soldier_data[soldier_data['Casualty_State'].isin(['WOUNDED', 'KIA', 'KILL'])])
+            if casualty_changes > 1:
+                additional_penalty = (casualty_changes - 1) * 5
+                score_change -= additional_penalty
+                breakdown.deduction_details.append(f"Multiple casualties: -{additional_penalty} points")
+        
+        return score_change
+    
+    def _add_safety_considerations(self, safety_metrics: SafetyMetrics, breakdown: PerformanceBreakdown):
+        """Add safety considerations per ICD FR-021 (no penalties for medical conditions)"""
+        # Medical alerts tracked but do not affect performance score per ICD
+        if safety_metrics.medical_alerts:
+            breakdown.bonus_details.append(f"Medical monitoring: {len(safety_metrics.medical_alerts)} alerts tracked (no performance penalty)")
+    
+    def _count_posture_changes(self, posture_series: pd.Series) -> int:
+        """Count posture changes in time series"""
+        changes = 0
+        for i in range(1, len(posture_series)):
+            if posture_series.iloc[i] != posture_series.iloc[i-1]:
+                changes += 1
+        return changes
+
+
+class ReportGenerator:
+    """
+    ICD-compliant report generator implementing all requirements
+    UPDATED: Compatible with original main.py initialization pattern
+    """
+    
+    def __init__(self, event_bus, html_renderer):
+        """
+        Initialize report generator - UPDATED to match main.py expectations
+        
+        Args:
+            event_bus: Event bus for communication
+            html_renderer: HTML renderer instance
+        """
+        self.event_bus = event_bus
+        self.html_renderer = html_renderer
+        self.logger = logging.getLogger(__name__)
+        self.component_id = "ReportGenerator"
+        
+        # Data storage - will be set when data is loaded
+        self.data: Optional[pd.DataFrame] = None
+        self.battle_analyzer: Optional[BattleTimelineAnalyzer] = None
+        self.safety_analyzer: Optional[SafetyAnalyzer] = None
+        self.performance_scorer: Optional[PerformanceScorer] = None
+        
+        # Setup event handlers
+        self._setup_event_handlers()
+        
+        # Statistics
+        self.stats = {
+            'reports_generated': 0,
+            'reports_failed': 0,
+            'batch_reports_generated': 0,
+            'active_sessions': 0
+        }
+        
+        self.logger.info("ReportGenerator initialized successfully")
+    
+    def _setup_event_handlers(self) -> None:
+        """Setup event handlers for report generation"""
+        try:
+            # Subscribe to data loaded events
+            self.event_bus.subscribe(
+                "DATA_LOADED",
+                self._handle_data_loaded,
+                priority=10,
+                handler_id=f"{self.component_id}_data_loaded"
+            )
+            
+            # Subscribe to report generation requests
+            self.event_bus.subscribe(
+                "REPORT_GENERATION_REQUESTED",
+                self._handle_report_generation_request,
+                priority=10,
+                handler_id=f"{self.component_id}_report_request"
+            )
+            
+            # Subscribe to analysis completion
+            self.event_bus.subscribe(
+                "ANALYSIS_COMPLETED", 
+                self._handle_analysis_completed,
+                priority=5,
+                handler_id=f"{self.component_id}_analysis_completed"
+            )
+            
+            self._publish_status("Report generator event handlers registered")
+            
+        except Exception as e:
+            self.logger.warning(f"Could not setup event handlers: {e}")
+    
+    def _handle_data_loaded(self, event) -> None:
+        """Handle data loaded event and initialize analyzers"""
+        try:
+            # Extract data from event - works with your DataLoadedEvent structure
+            dataset = event.data.get('dataset') if hasattr(event, 'data') and event.data else None
+            
+            if dataset is not None:
+                # Extract the actual DataFrame from the dataset
+                if hasattr(dataset, 'data'):
+                    self.data = dataset.data  # SoldierDataset.data
+                elif hasattr(dataset, 'dataframe'):
+                    self.data = dataset.dataframe  # Alternative attribute name
+                else:
+                    # If dataset is already a DataFrame
+                    self.data = dataset
+                
+                # Initialize analyzers with the data
+                if self.data is not None and len(self.data) > 0:
+                    self.battle_analyzer = BattleTimelineAnalyzer(self.data)
+                    self.safety_analyzer = SafetyAnalyzer()
+                    self.performance_scorer = PerformanceScorer(self.battle_analyzer)
+                    
+                    self.logger.info(f"Report generator initialized with {len(self.data)} records")
+                    self._publish_status(f"Report generator ready with {len(self.data)} data records")
+                else:
+                    self.logger.warning("Data loaded but DataFrame is empty")
+                    self._publish_status("Data loaded but no records found", "warning")
+            else:
+                self.logger.warning("No valid dataset found in data loaded event")
+                self._publish_status("No valid dataset found in data loaded event", "warning")
+                
+        except Exception as e:
+            self.logger.error(f"Error handling data loaded event: {e}")
+            self._publish_error(e, "data_loaded_handling")
+    
+    def _handle_analysis_completed(self, event) -> None:
+        """Handle analysis completion event"""
+        try:
+            # The analysis is complete, we can now generate reports
+            self._publish_status("Analysis completed - reports ready for generation")
+            
+        except Exception as e:
+            self.logger.error(f"Error handling analysis completion: {e}")
+    
+    def _handle_report_generation_request(self, event) -> None:
+        """Handle report generation request"""
+        try:
+            request_data = event.data if hasattr(event, 'data') else {}
+            
+            if 'soldier_callsigns' in request_data:
+                callsigns = request_data['soldier_callsigns']
+                output_directory = request_data.get('output_directory', 'reports')
+                
+                self.logger.info(f"Report generation requested for {len(callsigns)} soldiers: {callsigns}")
+                self._publish_status(f"Report generation requested for {len(callsigns)} soldiers")
+                
+                # Generate reports
+                self.generate_reports_for_callsigns(callsigns, output_directory)
+            else:
+                self.logger.warning("Report generation request missing soldier_callsigns")
+                self._publish_status("Report generation request missing soldier callsigns", "warning")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to handle report generation request: {e}")
+            self._publish_error(e, "report_request_handling")
+    
+    def generate_reports_for_callsigns(self, callsigns: List[str], output_directory: str) -> List[str]:
+        """
+        Generate reports for the given callsigns.
+        
+        Args:
+            callsigns: List of soldier callsigns
+            output_directory: Directory to save reports
+            
+        Returns:
+            List of generated report file paths
+        """
+        try:
+            if not self._is_ready():
+                error_msg = "Report generator not ready - no data loaded or analyzers not initialized"
+                self.logger.error(error_msg)
+                self._publish_status(error_msg, "error")
+                return []
+            
+            self.logger.info(f"Starting report generation for {len(callsigns)} soldiers")
+            self._publish_status(f"Generating reports for {len(callsigns)} soldiers...")
+            
+            # Create output directory
+            output_path = Path(output_directory)
+            output_path.mkdir(parents=True, exist_ok=True)
+            
+            generated_reports = []
+            failed_reports = []
+            
+            for callsign in callsigns:
+                try:
+                    # Generate report using the individual report method
+                    report_file = self.generate_individual_report(callsign, output_path)
+                    
+                    if report_file:
+                        generated_reports.append(str(report_file))
+                        self.logger.info(f"Generated report: {report_file}")
+                        self._publish_status(f"Generated report for {callsign}")
+                    else:
+                        failed_reports.append(callsign)
+                        
+                except Exception as e:
+                    self.logger.error(f"Failed to generate report for {callsign}: {e}")
+                    failed_reports.append(callsign)
+            
+            # Report results
+            success_msg = f"Successfully generated {len(generated_reports)} reports in {output_path}"
+            if failed_reports:
+                success_msg += f" ({len(failed_reports)} failed: {', '.join(failed_reports)})"
+            
+            self._publish_status(success_msg, "success")
+            self.logger.info(f"Reports saved to: {output_path}")
+            
+            # Update stats
+            self.stats['reports_generated'] += len(generated_reports)
+            self.stats['reports_failed'] += len(failed_reports)
+            
+            return generated_reports
+            
+        except Exception as e:
+            self.logger.error(f"Error in report generation: {e}")
+            self._publish_status(f"Report generation failed: {str(e)}", "error")
+            self._publish_error(e, "report_generation")
+            return []
+    
+    def _is_ready(self) -> bool:
+        """Check if report generator is ready to generate reports"""
+        return (self.data is not None and 
+                self.battle_analyzer is not None and 
+                self.safety_analyzer is not None and 
+                self.performance_scorer is not None)
+        
+    def generate_individual_report(self, callsign: str, output_path: Path) -> str:
+        """
+        Generate comprehensive individual soldier report per ICD FR-024 through FR-028
+        """
+        if not self._is_ready():
+            raise ValueError("Report generator not ready - no data loaded")
+            
+        soldier_data = self.data[self.data['Callsign'] == callsign].copy()
+        
+        if len(soldier_data) == 0:
+            raise ValueError(f"No data found for soldier {callsign}")
+        
+        # Comprehensive analysis
+        comprehensive_stats = self._calculate_comprehensive_stats(callsign, soldier_data)
+        safety_analysis = self.safety_analyzer.analyze_soldier_safety(soldier_data)
+        performance_score, breakdown = self.performance_scorer.calculate_performance_score(
+            callsign, soldier_data, safety_analysis)
+        
+        # Generate HTML report
+        html_content = self._generate_icd_compliant_html(
+            callsign, comprehensive_stats, safety_analysis, performance_score, breakdown)
+        
+        # Save report
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"enhanced_soldier_report_{callsign}_{timestamp}.html"
+        full_path = output_path / filename
+        
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        return str(full_path)
+    
+    def _calculate_comprehensive_stats(self, callsign: str, soldier_data: pd.DataFrame) -> Dict[str, Any]:
+        """Calculate comprehensive statistics per ICD data requirements"""
+        stats = {
+            'callsign': callsign,
+            'total_records': len(soldier_data),
+            'data_quality': self._assess_data_quality(soldier_data),
+        }
+        
+        # Physical metrics
+        if 'Step_Count' in soldier_data.columns:
+            step_data = soldier_data['Step_Count'].dropna()
+            if len(step_data) > 0:
+                stats.update({
+                    'total_steps': int(step_data.sum()),
+                    'avg_steps': float(step_data.mean()),
+                    'max_steps': int(step_data.max()),
+                    'min_steps': int(step_data.min())
+                })
+        
+        # Physiological metrics
+        if 'Heart_Rate' in soldier_data.columns:
+            hr_data = soldier_data['Heart_Rate'].dropna()
+            if len(hr_data) > 0:
+                stats.update({
+                    'min_heart_rate': float(hr_data.min()),
+                    'avg_heart_rate': float(hr_data.mean()),
+                    'max_heart_rate': float(hr_data.max()),
+                    'abnormal_hr_count': int(len(hr_data[(hr_data < 60) | (hr_data > 190)]))
+                })
+        
+        # Equipment metrics
+        if 'Battery' in soldier_data.columns:
+            battery_data = soldier_data['Battery'].dropna()
+            if len(battery_data) > 0:
+                stats.update({
+                    'min_battery': float(battery_data.min()),
+                    'avg_battery': float(battery_data.mean()),
+                    'max_battery': float(battery_data.max()),
+                    'low_battery_incidents': int(len(battery_data[battery_data < 20]))
+                })
+        
+        # Communication metrics
+        if 'RSSI' in soldier_data.columns:
+            rssi_data = soldier_data['RSSI'].dropna()
+            if len(rssi_data) > 0:
+                avg_rssi = rssi_data.mean()
+                stats.update({
+                    'avg_rssi': float(avg_rssi),
+                    'min_rssi': float(rssi_data.min()),
+                    'max_rssi': float(rssi_data.max()),
+                    'comm_quality': self._assess_comm_quality(avg_rssi)
+                })
+        
+        # Tactical metrics
+        if 'Posture' in soldier_data.columns:
+            posture_data = soldier_data['Posture'].dropna()
+            if len(posture_data) > 0:
+                posture_counts = posture_data.value_counts()
+                stats.update({
+                    'posture_distribution': posture_counts.to_dict(),
+                    'dominant_posture': posture_counts.index[0] if len(posture_counts) > 0 else 'Unknown',
+                    'posture_changes': self.performance_scorer._count_posture_changes(posture_data)
+                })
+        
+        # Combat metrics
+        if 'Casualty_State' in soldier_data.columns:
+            casualty_data = soldier_data['Casualty_State'].dropna()
+            if len(casualty_data) > 0:
+                stats.update({
+                    'final_casualty_state': casualty_data.iloc[-1],
+                    'casualty_incidents': len(casualty_data[casualty_data.isin(['WOUNDED', 'KIA', 'KILL'])])
+                })
+        
+        # Battle timeline analysis
+        battle_detected, battle_start, battle_end = self.battle_analyzer.detect_battle_period()
+        if battle_detected:
+            stats.update({
+                'battle_detected': True,
+                'battle_start': battle_start.isoformat() if battle_start else None,
+                'battle_end': battle_end.isoformat() if battle_end else None,
+                'battle_duration_minutes': 45
+            })
+        else:
+            stats['battle_detected'] = False
+        
+        return stats
+    
+    def _assess_data_quality(self, soldier_data: pd.DataFrame) -> str:
+        """Assess data quality per ICD requirements"""
+        required_columns = ['Callsign', 'Heart_Rate', 'Posture', 'Latitude', 'Longitude', 'Casualty_State', 'Time_Step']
+        
+        total_required = len(required_columns)
+        present_required = sum(1 for col in required_columns if col in soldier_data.columns)
+        
+        completeness = present_required / total_required
+        
+        if completeness > 0.95:
+            return DataQualityLevel.EXCELLENT.value
+        elif completeness > 0.85:
+            return DataQualityLevel.GOOD.value
+        elif completeness > 0.70:
+            return DataQualityLevel.FAIR.value
+        else:
+            return DataQualityLevel.POOR.value
+    
+    def _assess_comm_quality(self, avg_rssi: float) -> str:
+        """Assess communication quality per enhanced framework"""
+        if avg_rssi > -60:
+            return "Excellent"
+        elif avg_rssi > -70:
+            return "Good"
+        elif avg_rssi > -80:
+            return "Fair"
+        else:
+            return "Poor"
+    
+    def _generate_icd_compliant_html(self, callsign: str, stats: Dict[str, Any], 
+                                   safety_analysis: SafetyMetrics, performance_score: float,
+                                   breakdown: PerformanceBreakdown) -> str:
+        """Generate ICD-compliant HTML report per FR-024"""
+        
+        # Determine performance rating
+        if performance_score >= 90:
+            rating = PerformanceRating.EXCELLENT
+            rating_color = "#27ae60"
+            rating_description = "Exemplary performance - exceeds standards"
+        elif performance_score >= 80:
+            rating = PerformanceRating.GOOD
+            rating_color = "#f39c12"
+            rating_description = "Above average performance - meets expectations"
+        elif performance_score >= 70:
+            rating = PerformanceRating.SATISFACTORY
+            rating_color = "#e67e22"
+            rating_description = "Satisfactory performance - meets minimum requirements"
+        elif performance_score >= 60:
+            rating = PerformanceRating.NEEDS_IMPROVEMENT
+            rating_color = "#e74c3c"
+            rating_description = "Below standard - improvement required"
+        else:
+            rating = PerformanceRating.CRITICAL
+            rating_color = "#c0392b"
+            rating_description = "Critical performance - immediate attention required"
+        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Enhanced Individual Soldier Report - {callsign}</title>
+            <style>
+                /* ICD-Compliant Report Styling */
+                body {{ 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    margin: 0; 
+                    padding: 20px; 
+                    background: #f5f6fa; 
+                    color: #2c3e50;
+                    line-height: 1.6;
+                }}
+                .container {{ 
+                    background: white; 
+                    padding: 40px; 
+                    border-radius: 12px; 
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.1); 
+                    max-width: 1200px; 
+                    margin: 0 auto; 
+                }}
+                .header {{ 
+                    background: linear-gradient(135deg, #2c3e50, #3498db); 
+                    color: white; 
+                    padding: 30px; 
+                    text-align: center; 
+                    border-radius: 12px; 
+                    margin-bottom: 30px; 
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                }}
+                .header h1 {{ margin: 0; font-size: 2.5em; font-weight: 300; }}
+                .header h2 {{ margin: 10px 0 0 0; font-size: 1.8em; font-weight: 400; }}
+                .header .subtitle {{ margin-top: 15px; font-size: 1.1em; opacity: 0.9; }}
+                
+                .classification {{ 
+                    background: #e74c3c; 
+                    color: white; 
+                    text-align: center; 
+                    padding: 10px; 
+                    font-weight: bold; 
+                    margin-bottom: 20px; 
+                    border-radius: 6px;
+                }}
+                
+                .performance-summary {{ 
+                    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                    padding: 30px; 
+                    border-radius: 12px; 
+                    margin-bottom: 30px; 
+                    text-align: center;
+                    border-left: 6px solid {rating_color};
+                }}
+                .performance-score {{ 
+                    font-size: 4.5em; 
+                    font-weight: bold; 
+                    color: {rating_color}; 
+                    margin: 20px 0; 
+                }}
+                .performance-rating {{ 
+                    font-size: 1.4em; 
+                    color: {rating_color}; 
+                    font-weight: 600; 
+                    margin-bottom: 10px;
+                }}
+                .performance-description {{ 
+                    font-size: 1.1em; 
+                    color: #6c757d; 
+                }}
+                
+                .section {{ 
+                    background: white; 
+                    padding: 30px; 
+                    margin: 25px 0; 
+                    border-radius: 12px; 
+                    border-left: 6px solid #3498db; 
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+                }}
+                .section h2 {{ 
+                    color: #2c3e50; 
+                    border-bottom: 3px solid #3498db; 
+                    padding-bottom: 15px; 
+                    margin-bottom: 25px; 
+                    font-size: 1.6em;
+                    font-weight: 500;
+                }}
+                
+                .metric-grid {{ 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+                    gap: 20px; 
+                    margin: 25px 0; 
+                }}
+                .metric-card {{ 
+                    background: linear-gradient(135deg, #f8f9fa, #ffffff); 
+                    padding: 25px; 
+                    border-radius: 10px; 
+                    text-align: center; 
+                    border-left: 5px solid #3498db; 
+                    box-shadow: 0 3px 15px rgba(0,0,0,0.08); 
+                    transition: transform 0.2s ease;
+                }}
+                .metric-card:hover {{ transform: translateY(-2px); }}
+                .metric-value {{ 
+                    font-size: 2.5em; 
+                    font-weight: bold; 
+                    color: #2c3e50; 
+                    margin: 15px 0; 
+                }}
+                .metric-label {{ 
+                    color: #7f8c8d; 
+                    font-size: 1em; 
+                    font-weight: 500; 
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }}
+                
+                .alert {{ 
+                    padding: 20px; 
+                    border-radius: 8px; 
+                    margin: 15px 0; 
+                    border-left: 5px solid;
+                }}
+                .alert-info {{ 
+                    background: #e3f2fd; 
+                    border-color: #2196f3; 
+                    color: #0d47a1; 
+                }}
+                .alert-warning {{ 
+                    background: #fff3e0; 
+                    border-color: #ff9800; 
+                    color: #e65100; 
+                }}
+                .alert-critical {{ 
+                    background: #ffebee; 
+                    border-color: #f44336; 
+                    color: #b71c1c; 
+                }}
+                .alert-success {{ 
+                    background: #e8f5e8; 
+                    border-color: #4caf50; 
+                    color: #2e7d32; 
+                }}
+                
+                .breakdown-section {{ 
+                    background: #f8f9fa; 
+                    padding: 25px; 
+                    border-radius: 10px; 
+                    margin: 20px 0; 
+                }}
+                .breakdown-item {{ 
+                    background: white; 
+                    padding: 15px; 
+                    margin: 8px 0; 
+                    border-radius: 6px; 
+                    border-left: 4px solid #3498db; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                }}
+                .deduction {{ border-left-color: #e74c3c; }}
+                .bonus {{ border-left-color: #27ae60; }}
+                
+                .zone-grid {{ 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+                    gap: 15px; 
+                    margin: 20px 0; 
+                }}
+                .zone-card {{ 
+                    text-align: center; 
+                    padding: 20px; 
+                    border-radius: 8px; 
+                    color: white; 
+                    font-weight: bold;
+                }}
+                .zone-green {{ background: #27ae60; }}
+                .zone-yellow {{ background: #f39c12; }}
+                .zone-orange {{ background: #e67e22; }}
+                .zone-red {{ background: #e74c3c; }}
+                
+                .footer {{ 
+                    text-align: center; 
+                    margin-top: 40px; 
+                    padding: 30px; 
+                    background: linear-gradient(135deg, #2c3e50, #34495e); 
+                    color: white; 
+                    border-radius: 12px; 
+                }}
+                
+                .data-quality-indicator {{
+                    display: inline-block;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-weight: bold;
+                    font-size: 0.9em;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }}
+                .quality-excellent {{ background: #27ae60; color: white; }}
+                .quality-good {{ background: #f39c12; color: white; }}
+                .quality-fair {{ background: #e67e22; color: white; }}
+                .quality-poor {{ background: #e74c3c; color: white; }}
+                
+                @media print {{
+                    body {{ background: white; }}
+                    .container {{ box-shadow: none; }}
+                    .section {{ box-shadow: none; }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <!-- Classification Header -->
+                <div class="classification">
+                    FOR OFFICIAL USE ONLY - MILITARY EXERCISE DATA
+                </div>
+                
+                <!-- Report Header -->
+                <div class="header">
+                    <h1>🎖️ Enhanced Individual Soldier Report</h1>
+                    <h2>Soldier: {callsign}</h2>
+                    <div class="subtitle">
+                        Generated: {timestamp} | 
+                        Records Analyzed: {stats.get('total_records', 0):,} | 
+                        Data Quality: <span class="data-quality-indicator quality-{stats.get('data_quality', 'unknown').lower()}">{stats.get('data_quality', 'Unknown')}</span>
+                    </div>
+                </div>
+                
+                <!-- Performance Summary -->
+                <div class="performance-summary">
+                    <div class="performance-score">{performance_score:.0f}/100</div>
+                    <div class="performance-rating">{rating.value}</div>
+                    <div class="performance-description">{rating_description}</div>
+                </div>
+                
+                <!-- Executive Summary -->
+                <div class="section">
+                    <h2>📊 Executive Summary</h2>
+                    <p><strong>Bottom Line Up Front:</strong> Soldier {callsign} achieved a performance score of <strong>{performance_score:.0f}/100</strong> 
+                    with <strong>{rating.value}</strong> rating. {self._generate_executive_summary(stats, safety_analysis, performance_score)}</p>
+                    
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">{stats.get('total_records', 0):,}</div>
+                            <div class="metric-label">Data Points</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{stats.get('final_casualty_state', 'Unknown')}</div>
+                            <div class="metric-label">Final Status</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{safety_analysis.overall_safety_score:.0f}/100</div>
+                            <div class="metric-label">Safety Score</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{"YES" if stats.get('battle_detected', False) else "NO"}</div>
+                            <div class="metric-label">Battle Detected</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Breakdown -->
+                <div class="section">
+                    <h2>🎯 Performance Score Breakdown</h2>
+                    <div class="breakdown-section">
+                        <h3>📈 Score Calculation</h3>
+                        <div class="metric-grid">
+                            <div class="metric-card">
+                                <div class="metric-value">{breakdown.base_score:.0f}</div>
+                                <div class="metric-label">Base Score</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value">-{breakdown.total_deductions:.0f}</div>
+                                <div class="metric-label">Total Deductions</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value">+{breakdown.total_bonuses:.0f}</div>
+                                <div class="metric-label">Total Bonuses</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" style="color: {rating_color};">{breakdown.final_score:.0f}</div>
+                                <div class="metric-label">Final Score</div>
+                            </div>
+                        </div>
+                        
+                        <h4>📋 Detailed Score Changes</h4>
+                        {self._generate_breakdown_details(breakdown)}
+                    </div>
+                </div>
+                
+                <!-- Safety Assessment -->
+                <div class="section">
+                    <h2>🛡️ Safety Assessment & Medical Monitoring</h2>
+                    <p><em>Medical monitoring data - used for safety assurance, not performance penalties per ICD FR-021</em></p>
+                    
+                    {self._generate_safety_assessment_html(safety_analysis)}
+                </div>
+                
+                <!-- Physical Performance -->
+                <div class="section">
+                    <h2>🏃 Physical Performance Analysis</h2>
+                    {self._generate_physical_performance_html(stats)}
+                </div>
+                
+                <!-- Tactical Analysis -->
+                <div class="section">
+                    <h2>⚔️ Tactical Analysis</h2>
+                    {self._generate_tactical_analysis_html(stats)}
+                </div>
+                
+                <!-- Battle Timeline Context -->
+                <div class="section">
+                    <h2>⏰ Battle Timeline Context</h2>
+                    {self._generate_battle_timeline_html(stats)}
+                </div>
+                
+                <!-- Equipment Status -->
+                <div class="section">
+                    <h2>🔧 Equipment & Communication Status</h2>
+                    {self._generate_equipment_status_html(stats)}
+                </div>
+                
+                <!-- Recommendations -->
+                <div class="section">
+                    <h2>💡 Recommendations & Action Items</h2>
+                    {self._generate_recommendations_html(stats, safety_analysis, performance_score)}
+                </div>
+                
+                <!-- Report Footer -->
+                <div class="footer">
+                    <p><strong>🎖️ Enhanced Individual Soldier Report System</strong></p>
+                    <p>Advanced Medical Monitoring and Performance Assessment Platform</p>
+                    <p>ICD Version 2.0 Compliant | Generated: {timestamp}</p>
+                    <p>Report ID: {callsign}_{datetime.now().strftime('%Y%m%d_%H%M%S')} | Classification: FOR OFFICIAL USE ONLY</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return html
+    
+    def _generate_executive_summary(self, stats: Dict[str, Any], safety: SafetyMetrics, score: float) -> str:
+        """Generate executive summary text"""
+        summary_parts = []
+        
+        # Safety status
+        if len(safety.medical_alerts) > 0:
+            summary_parts.append(f"Medical monitoring detected {len(safety.medical_alerts)} alert(s) requiring attention.")
+        else:
+            summary_parts.append("No medical alerts detected during exercise.")
+        
+        # Performance highlights
+        if score >= 85:
+            summary_parts.append("Performance exceeded expectations with strong tactical execution.")
+        elif score >= 70:
+            summary_parts.append("Performance met standards with room for tactical improvement.")
+        else:
+            summary_parts.append("Performance below standards - focused training recommended.")
+        
+        # Data quality
+        data_quality = stats.get('data_quality', 'Unknown')
+        if data_quality == 'EXCELLENT':
+            summary_parts.append("Data quality excellent with comprehensive coverage.")
+        elif data_quality in ['GOOD', 'FAIR']:
+            summary_parts.append(f"Data quality {data_quality.lower()} - analysis reliable.")
+        else:
+            summary_parts.append("Data quality concerns may affect analysis reliability.")
+        
+        return " ".join(summary_parts)
+    
+    def _generate_breakdown_details(self, breakdown: PerformanceBreakdown) -> str:
+        """Generate performance breakdown details HTML"""
+        html = ""
+        
+        # Deductions
+        if breakdown.deduction_details:
+            html += "<h5>⬇️ Performance Deductions</h5>"
+            for deduction in breakdown.deduction_details:
+                html += f'<div class="breakdown-item deduction">{deduction}</div>'
+        
+        # Bonuses
+        if breakdown.bonus_details:
+            html += "<h5>⬆️ Performance Bonuses</h5>"
+            for bonus in breakdown.bonus_details:
+                html += f'<div class="breakdown-item bonus">{bonus}</div>'
+        
+        if not breakdown.deduction_details and not breakdown.bonus_details:
+            html += '<div class="alert alert-info">No specific performance adjustments applied - baseline scoring used.</div>'
+        
+        return html
+    
+    def _generate_safety_assessment_html(self, safety: SafetyMetrics) -> str:
+        """Generate safety assessment HTML section"""
+        html = f"""
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">{safety.overall_safety_score:.0f}/100</div>
+                <div class="metric-label">Overall Safety Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{safety.physiological_stress.value}</div>
+                <div class="metric-label">Physiological Stress</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{safety.temperature_risk.value}</div>
+                <div class="metric-label">Temperature Risk</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{safety.equipment_risk.value}</div>
+                <div class="metric-label">Equipment Risk</div>
+            </div>
+        </div>
+        
+        <h3>❤️ Heart Rate Zone Analysis</h3>
+        <div class="zone-grid">
+            <div class="zone-card zone-green">
+                <div>Green Zone</div>
+                <div>(60-140 BPM)</div>
+                <div style="font-size: 1.5em;">{safety.heart_rate_zones.green_zone}</div>
+            </div>
+            <div class="zone-card zone-yellow">
+                <div>Yellow Zone</div>
+                <div>(140-170 BPM)</div>
+                <div style="font-size: 1.5em;">{safety.heart_rate_zones.yellow_zone}</div>
+            </div>
+            <div class="zone-card zone-orange">
+                <div>Orange Zone</div>
+                <div>(170-190 BPM)</div>
+                <div style="font-size: 1.5em;">{safety.heart_rate_zones.orange_zone}</div>
+            </div>
+            <div class="zone-card zone-red">
+                <div>Red Zone</div>
+                <div>(>190 or <60 BPM)</div>
+                <div style="font-size: 1.5em;">{safety.heart_rate_zones.red_zone}</div>
+            </div>
+        </div>
+        """
+        
+        # Medical alerts
+        if safety.medical_alerts:
+            html += '<h3>🚨 Medical Alerts</h3>'
+            for alert in safety.medical_alerts:
+                if "EMERGENCY" in alert or "CRITICAL" in alert:
+                    html += f'<div class="alert alert-critical"><strong>CRITICAL:</strong> {alert}</div>'
+                elif "ALERT" in alert:
+                    html += f'<div class="alert alert-warning"><strong>WARNING:</strong> {alert}</div>'
+                else:
+                    html += f'<div class="alert alert-info"><strong>INFO:</strong> {alert}</div>'
+        else:
+            html += '<div class="alert alert-success">✅ No medical alerts detected - all vitals within normal parameters</div>'
+        
+        return html
+    
+    def _generate_physical_performance_html(self, stats: Dict[str, Any]) -> str:
+        """Generate physical performance HTML section"""
+        html = '<div class="metric-grid">'
+        
+        # Step count metrics
+        if 'total_steps' in stats:
+            html += f"""
+            <div class="metric-card">
+                <div class="metric-value">{stats['total_steps']:,}</div>
+                <div class="metric-label">Total Steps</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{stats.get('avg_steps', 0):.0f}</div>
+                <div class="metric-label">Average Steps</div>
+            </div>
+            """
+        
+        # Other physical metrics
+        if 'posture_changes' in stats:
+            html += f"""
+            <div class="metric-card">
+                <div class="metric-value">{stats['posture_changes']}</div>
+                <div class="metric-label">Position Changes</div>
+            </div>
+            """
+        
+        html += '</div>'
+        
+        # Activity assessment
+        if 'avg_steps' in stats:
+            avg_steps = stats['avg_steps']
+            if avg_steps >= 100:
+                html += '<div class="alert alert-success">✅ Excellent activity level - maintains high physical engagement</div>'
+            elif avg_steps >= 50:
+                html += '<div class="alert alert-warning">⚠️ Moderate activity level - consider increasing movement during appropriate phases</div>'
+            else:
+                html += '<div class="alert alert-critical">❌ Low activity level - physical conditioning assessment recommended</div>'
+        
+        return html
+    
+    def _generate_tactical_analysis_html(self, stats: Dict[str, Any]) -> str:
+        """Generate tactical analysis HTML section"""
+        html = ""
+        
+        if 'posture_distribution' in stats:
+            html += '<h3>📊 Posture Distribution Analysis</h3>'
+            html += '<div class="metric-grid">'
+            
+            for posture, count in stats['posture_distribution'].items():
+                percentage = (count / stats['total_records']) * 100 if stats['total_records'] > 0 else 0
+                html += f"""
+                <div class="metric-card">
+                    <div class="metric-value">{percentage:.1f}%</div>
+                    <div class="metric-label">{posture}</div>
+                    <div style="font-size: 0.8em; color: #6c757d;">({count} records)</div>
+                </div>
+                """
+            
+            html += '</div>'
+            
+            # Tactical assessment
+            if 'Prone' in stats['posture_distribution']:
+                prone_pct = (stats['posture_distribution']['Prone'] / stats['total_records']) * 100
+                if prone_pct >= 40:
+                    html += '<div class="alert alert-success">✅ Good use of prone positioning for tactical advantage</div>'
+                else:
+                    html += '<div class="alert alert-warning">⚠️ Consider increased use of prone positioning during engagement</div>'
+        
+        return html
+    
+    def _generate_battle_timeline_html(self, stats: Dict[str, Any]) -> str:
+        """Generate battle timeline HTML section"""
+        if stats.get('battle_detected', False):
+            html = f"""
+            <div class="alert alert-info">
+                <strong>Battle Period Detected:</strong> Last 45 minutes of exercise identified as engagement period.<br>
+                <strong>Battle Start:</strong> {stats.get('battle_start', 'Unknown')}<br>
+                <strong>Battle End:</strong> {stats.get('battle_end', 'Unknown')}<br>
+                <strong>Duration:</strong> {stats.get('battle_duration_minutes', 45)} minutes
+            </div>
+            """
+        else:
+            html = """
+            <div class="alert alert-warning">
+                <strong>No Battle Period Detected:</strong> Insufficient data duration or no clear engagement phase identified.
+                Analysis performed on available data as general exercise monitoring.
+            </div>
+            """
+        
+        return html
+    
+    def _generate_equipment_status_html(self, stats: Dict[str, Any]) -> str:
+        """Generate equipment status HTML section"""
+        html = '<div class="metric-grid">'
+        
+        # Battery metrics
+        if 'avg_battery' in stats:
+            html += f"""
+            <div class="metric-card">
+                <div class="metric-value">{stats['avg_battery']:.1f}%</div>
+                <div class="metric-label">Average Battery</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{stats['min_battery']:.1f}%</div>
+                <div class="metric-label">Minimum Battery</div>
+            </div>
+            """
+        
+        # Communication metrics
+        if 'avg_rssi' in stats:
+            html += f"""
+            <div class="metric-card">
+                <div class="metric-value">{stats['avg_rssi']:.1f} dBm</div>
+                <div class="metric-label">Signal Strength</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{stats.get('comm_quality', 'Unknown')}</div>
+                <div class="metric-label">Communication Quality</div>
+            </div>
+            """
+        
+        html += '</div>'
+        
+        # Equipment alerts
+        if 'low_battery_incidents' in stats and stats['low_battery_incidents'] > 0:
+            html += f'<div class="alert alert-warning">⚠️ {stats["low_battery_incidents"]} low battery incidents detected during exercise</div>'
+        
+        if 'avg_rssi' in stats:
+            if stats['avg_rssi'] < -80:
+                html += '<div class="alert alert-critical">❌ Poor communication quality - signal strength issues detected</div>'
+            elif stats['avg_rssi'] > -60:
+                html += '<div class="alert alert-success">✅ Excellent communication quality maintained throughout exercise</div>'
+        
+        return html
+    
+    def _generate_recommendations_html(self, stats: Dict[str, Any], safety: SafetyMetrics, score: float) -> str:
+        """Generate recommendations HTML section"""
+        recommendations = []
+        
+        # Performance-based recommendations
+        if score < 70:
+            recommendations.append("🎯 <strong>Priority:</strong> Comprehensive tactical training program recommended to address performance gaps")
+        
+        if 'posture_distribution' in stats:
+            posture_dist = stats['posture_distribution']
+            total_records = stats['total_records']
+            
+            if 'Standing' in posture_dist:
+                standing_pct = (posture_dist['Standing'] / total_records) * 100
+                if standing_pct > 15:
+                    recommendations.append("🛡️ <strong>Tactical:</strong> Reduce standing exposure during combat - increase use of cover positions")
+            
+            if 'Prone' in posture_dist:
+                prone_pct = (posture_dist['Prone'] / total_records) * 100
+                if prone_pct < 40:
+                    recommendations.append("⬇️ <strong>Positioning:</strong> Increase prone positioning usage for better tactical advantage")
+        
+        # Safety-based recommendations
+        if len(safety.medical_alerts) > 0:
+            recommendations.append("🏥 <strong>Medical:</strong> Schedule medical evaluation based on physiological alerts detected")
+        
+        if safety.heart_rate_zones.red_zone > 0:
+            recommendations.append("❤️ <strong>Fitness:</strong> Cardiovascular conditioning program recommended based on heart rate patterns")
+        
+        # Equipment recommendations
+        if 'low_battery_incidents' in stats and stats['low_battery_incidents'] > 0:
+            recommendations.append("🔋 <strong>Equipment:</strong> Implement better battery management protocols and backup power solutions")
+        
+        if 'avg_rssi' in stats and stats['avg_rssi'] < -75:
+            recommendations.append("📡 <strong>Communication:</strong> Review communication equipment positioning and antenna orientation")
+        
+        # Physical performance recommendations
+        if 'avg_steps' in stats and stats['avg_steps'] < 50:
+            recommendations.append("🏃 <strong>Physical:</strong> Increase physical activity and movement patterns during appropriate phases")
+        
+        # Default recommendation if none specific
+        if not recommendations:
+            recommendations.append("✅ <strong>Continue:</strong> Performance within acceptable parameters - maintain current training standards")
+        
+        html = '<div class="breakdown-section">'
+        for recommendation in recommendations:
+            html += f'<div class="breakdown-item">{recommendation}</div>'
+        html += '</div>'
+        
+        return html
+    
+    def _publish_status(self, message: str, level: str = "info") -> None:
+        """Publish status message via event bus"""
+        try:
+            if hasattr(self.event_bus, 'publish'):
+                from src.core.events import Event, EventType
+                
+                status_event = Event(
+                    type=EventType.STATUS_UPDATE.value,
+                    data={
+                        'component': self.component_id,
+                        'message': message,
+                        'level': level
+                    },
+                    source=self.component_id
+                )
+                self.event_bus.publish(status_event)
+        except Exception as e:
+            self.logger.warning(f"Could not publish status: {e}")
+    
+    def _publish_error(self, error: Exception, context: str) -> None:
+        """Publish error via event bus"""
+        try:
+            if hasattr(self.event_bus, 'publish'):
+                from src.core.events import Event, EventType
+                
+                error_event = Event(
+                    type=EventType.ERROR_OCCURRED.value,
+                    data={
+                        'component': self.component_id,
+                        'error': str(error),
+                        'error_type': type(error).__name__,
+                        'context': context
+                    },
+                    source=self.component_id
+                )
+                self.event_bus.publish(error_event)
+        except Exception as e:
+            self.logger.warning(f"Could not publish error: {e}")
+    
+    def get_component_stats(self) -> Dict[str, Any]:
+        """Get component statistics"""
+        return {
+            'component_id': self.component_id,
+            'is_ready': self._is_ready(),
+            'data_loaded': self.data is not None,
+            'total_records': len(self.data) if self.data is not None else 0,
+            **self.stats
+        }

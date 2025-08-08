@@ -1,0 +1,86 @@
+# PowerShell script to fix import issues in AAR System files
+# Run this from your aar_system directory
+
+Write-Host "Fixing import issues in AAR System files..." -ForegroundColor Green
+
+# Function to fix imports in a file
+function Fix-FileImports {
+    param(
+        [string]$FilePath,
+        [string]$NewImportBlock
+    )
+    
+    if (Test-Path $FilePath) {
+        Write-Host "Fixing imports in: $FilePath" -ForegroundColor Yellow
+        
+        # Read the file content
+        $content = Get-Content $FilePath -Raw
+        
+        # Find and replace the malformed import section
+        # Look for the pattern starting with "from core.models import (" and ending with ")"
+        $importPattern = '(?s)from core\.models import \([^)]*\)'
+        
+        if ($content -match $importPattern) {
+            # Replace the existing import block
+            $content = $content -replace $importPattern, $NewImportBlock
+        } else {
+            # If no existing import block found, look for malformed fragments
+            # Remove lines that are just fragments like "ReportConfiguration, AnalysisLevel"
+            $fragmentPatterns = @(
+                '^\s*ReportConfiguration,\s*AnalysisLevel\s*$',
+                '^\s*AnalysisLevel,\s*Alert,\s*AlertLevel\s*$',
+                '^\s*AnalysisDomain,\s*AnalysisLevel,\s*ReportConfiguration,\s*SystemConfiguration,\s*$'
+            )
+            
+            foreach ($pattern in $fragmentPatterns) {
+                $content = $content -replace $pattern, $NewImportBlock
+            }
+        }
+        
+        # Write the fixed content back to the file
+        Set-Content $FilePath -Value $content -NoNewline
+        Write-Host "Fixed: $FilePath" -ForegroundColor Green
+    } else {
+        Write-Host "File not found: $FilePath" -ForegroundColor Red
+    }
+}
+
+# Define the correct import blocks for each file
+$analysisOrchestratorImport = @"
+from core.models import (
+    AnalysisDomain, AnalysisResult, AnalysisTask, SystemConfiguration,
+    ReportConfiguration, AnalysisLevel
+)
+"@
+
+$reportServiceImport = @"
+from core.models import (
+    ReportGenerator, AnalysisDomain, AnalysisResult, ReportConfiguration,
+    AnalysisLevel, Alert, AlertLevel
+)
+"@
+
+$mainApplicationImport = @"
+from core.models import (
+    AnalysisDomain, AnalysisLevel, ReportConfiguration, SystemConfiguration,
+    AnalysisTask, Alert, AlertLevel
+)
+"@
+
+# Fix the three main files
+Fix-FileImports -FilePath "services\orchestration\analysis_orchestrator.py" -NewImportBlock $analysisOrchestratorImport
+Fix-FileImports -FilePath "services\reporting\report_service.py" -NewImportBlock $reportServiceImport  
+Fix-FileImports -FilePath "ui\main_application.py" -NewImportBlock $mainApplicationImport
+
+Write-Host "`nRunning verification..." -ForegroundColor Green
+
+# Run the debug script to verify fixes
+if (Test-Path "debug_analysis_level.py") {
+    Write-Host "Running verification script..." -ForegroundColor Yellow
+    python debug_analysis_level.py
+} else {
+    Write-Host "Debug script not found - skipping verification" -ForegroundColor Yellow
+}
+
+Write-Host "`nImport fixes completed!" -ForegroundColor Green
+Write-Host "Try running 'python main.py' now." -ForegroundColor Cyan
