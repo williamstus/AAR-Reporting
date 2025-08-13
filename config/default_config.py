@@ -1,1 +1,0 @@
-# Default system configuration

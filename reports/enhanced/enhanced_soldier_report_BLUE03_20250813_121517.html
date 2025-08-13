@@ -1,0 +1,556 @@
+
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Enhanced Individual Soldier Report - BLUE03</title>
+            <style>
+                /* ICD-Compliant Report Styling */
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    margin: 0; 
+                    padding: 20px; 
+                    background: #f5f6fa; 
+                    color: #2c3e50;
+                    line-height: 1.6;
+                }
+                .container { 
+                    background: white; 
+                    padding: 40px; 
+                    border-radius: 12px; 
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.1); 
+                    max-width: 1200px; 
+                    margin: 0 auto; 
+                }
+                .header { 
+                    background: linear-gradient(135deg, #2c3e50, #3498db); 
+                    color: white; 
+                    padding: 30px; 
+                    text-align: center; 
+                    border-radius: 12px; 
+                    margin-bottom: 30px; 
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                }
+                .header h1 { margin: 0; font-size: 2.5em; font-weight: 300; }
+                .header h2 { margin: 10px 0 0 0; font-size: 1.8em; font-weight: 400; }
+                .header .subtitle { margin-top: 15px; font-size: 1.1em; opacity: 0.9; }
+                
+                .classification { 
+                    background: #e74c3c; 
+                    color: white; 
+                    text-align: center; 
+                    padding: 10px; 
+                    font-weight: bold; 
+                    margin-bottom: 20px; 
+                    border-radius: 6px;
+                }
+                
+                .performance-summary { 
+                    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                    padding: 30px; 
+                    border-radius: 12px; 
+                    margin-bottom: 30px; 
+                    text-align: center;
+                    border-left: 6px solid #27ae60;
+                }
+                .performance-score { 
+                    font-size: 4.5em; 
+                    font-weight: bold; 
+                    color: #27ae60; 
+                    margin: 20px 0; 
+                }
+                .performance-rating { 
+                    font-size: 1.4em; 
+                    color: #27ae60; 
+                    font-weight: 600; 
+                    margin-bottom: 10px;
+                }
+                .performance-description { 
+                    font-size: 1.1em; 
+                    color: #6c757d; 
+                }
+                
+                .section { 
+                    background: white; 
+                    padding: 30px; 
+                    margin: 25px 0; 
+                    border-radius: 12px; 
+                    border-left: 6px solid #3498db; 
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+                }
+                .section h2 { 
+                    color: #2c3e50; 
+                    border-bottom: 3px solid #3498db; 
+                    padding-bottom: 15px; 
+                    margin-bottom: 25px; 
+                    font-size: 1.6em;
+                    font-weight: 500;
+                }
+                
+                .metric-grid { 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+                    gap: 20px; 
+                    margin: 25px 0; 
+                }
+                .metric-card { 
+                    background: linear-gradient(135deg, #f8f9fa, #ffffff); 
+                    padding: 25px; 
+                    border-radius: 10px; 
+                    text-align: center; 
+                    border-left: 5px solid #3498db; 
+                    box-shadow: 0 3px 15px rgba(0,0,0,0.08); 
+                    transition: transform 0.2s ease;
+                }
+                .metric-card:hover { transform: translateY(-2px); }
+                .metric-value { 
+                    font-size: 2.5em; 
+                    font-weight: bold; 
+                    color: #2c3e50; 
+                    margin: 15px 0; 
+                }
+                .metric-label { 
+                    color: #7f8c8d; 
+                    font-size: 1em; 
+                    font-weight: 500; 
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .alert { 
+                    padding: 20px; 
+                    border-radius: 8px; 
+                    margin: 15px 0; 
+                    border-left: 5px solid;
+                }
+                .alert-info { 
+                    background: #e3f2fd; 
+                    border-color: #2196f3; 
+                    color: #0d47a1; 
+                }
+                .alert-warning { 
+                    background: #fff3e0; 
+                    border-color: #ff9800; 
+                    color: #e65100; 
+                }
+                .alert-critical { 
+                    background: #ffebee; 
+                    border-color: #f44336; 
+                    color: #b71c1c; 
+                }
+                .alert-success { 
+                    background: #e8f5e8; 
+                    border-color: #4caf50; 
+                    color: #2e7d32; 
+                }
+                
+                .breakdown-section { 
+                    background: #f8f9fa; 
+                    padding: 25px; 
+                    border-radius: 10px; 
+                    margin: 20px 0; 
+                }
+                .breakdown-item { 
+                    background: white; 
+                    padding: 15px; 
+                    margin: 8px 0; 
+                    border-radius: 6px; 
+                    border-left: 4px solid #3498db; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                }
+                .deduction { border-left-color: #e74c3c; }
+                .bonus { border-left-color: #27ae60; }
+                
+                .zone-grid { 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+                    gap: 15px; 
+                    margin: 20px 0; 
+                }
+                .zone-card { 
+                    text-align: center; 
+                    padding: 20px; 
+                    border-radius: 8px; 
+                    color: white; 
+                    font-weight: bold;
+                }
+                .zone-green { background: #27ae60; }
+                .zone-yellow { background: #f39c12; }
+                .zone-orange { background: #e67e22; }
+                .zone-red { background: #e74c3c; }
+                
+                .footer { 
+                    text-align: center; 
+                    margin-top: 40px; 
+                    padding: 30px; 
+                    background: linear-gradient(135deg, #2c3e50, #34495e); 
+                    color: white; 
+                    border-radius: 12px; 
+                }
+                
+                .data-quality-indicator {
+                    display: inline-block;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-weight: bold;
+                    font-size: 0.9em;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .quality-excellent { background: #27ae60; color: white; }
+                .quality-good { background: #f39c12; color: white; }
+                .quality-fair { background: #e67e22; color: white; }
+                .quality-poor { background: #e74c3c; color: white; }
+                
+                @media print {
+                    body { background: white; }
+                    .container { box-shadow: none; }
+                    .section { box-shadow: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <!-- Classification Header -->
+                <div class="classification">
+                    FOR OFFICIAL USE ONLY - MILITARY EXERCISE DATA
+                </div>
+                
+                <!-- Report Header -->
+                <div class="header">
+                    <h1>🎖️ Enhanced Individual Soldier Report</h1>
+                    <h2>Soldier: BLUE03</h2>
+                    <div class="subtitle">
+                        Generated: 2025-08-13 12:15:17 | 
+                        Records Analyzed: 60 | 
+                        Data Quality: <span class="data-quality-indicator quality-excellent">EXCELLENT</span>
+                    </div>
+                </div>
+                
+                <!-- Performance Summary -->
+                <div class="performance-summary">
+                    <div class="performance-score">100/100</div>
+                    <div class="performance-rating">EXCELLENT</div>
+                    <div class="performance-description">Exemplary performance - exceeds standards</div>
+                </div>
+                
+                <!-- Executive Summary -->
+                <div class="section">
+                    <h2>📊 Executive Summary</h2>
+                    <p><strong>Bottom Line Up Front:</strong> Soldier BLUE03 achieved a performance score of <strong>100/100</strong> 
+                    with <strong>EXCELLENT</strong> rating. No medical alerts detected during exercise. Performance exceeded expectations with strong tactical execution. Data quality excellent with comprehensive coverage.</p>
+                    
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">60</div>
+                            <div class="metric-label">Data Points</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">GOOD</div>
+                            <div class="metric-label">Final Status</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">100/100</div>
+                            <div class="metric-label">Safety Score</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">NO</div>
+                            <div class="metric-label">Battle Detected</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Breakdown -->
+                <div class="section">
+                    <h2>🎯 Performance Score Breakdown</h2>
+                    <div class="breakdown-section">
+                        <h3>📈 Score Calculation</h3>
+                        <div class="metric-grid">
+                            <div class="metric-card">
+                                <div class="metric-value">100</div>
+                                <div class="metric-label">Base Score</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value">-0</div>
+                                <div class="metric-label">Total Deductions</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value">+0</div>
+                                <div class="metric-label">Total Bonuses</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" style="color: #27ae60;">100</div>
+                                <div class="metric-label">Final Score</div>
+                            </div>
+                        </div>
+                        
+                        <h4>📋 Detailed Score Changes</h4>
+                        <div class="alert alert-info">No specific performance adjustments applied - baseline scoring used.</div>
+                    </div>
+                </div>
+                
+                <!-- Safety Assessment -->
+                <div class="section">
+                    <h2>🛡️ Safety Assessment & Medical Monitoring</h2>
+                    <p><em>Medical monitoring data - used for safety assurance, not performance penalties per ICD FR-021</em></p>
+                    
+                    
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">100/100</div>
+                <div class="metric-label">Overall Safety Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">LOW</div>
+                <div class="metric-label">Physiological Stress</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">LOW</div>
+                <div class="metric-label">Temperature Risk</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">LOW</div>
+                <div class="metric-label">Equipment Risk</div>
+            </div>
+        </div>
+        
+        <h3>❤️ Heart Rate Zone Analysis</h3>
+        <div class="zone-grid">
+            <div class="zone-card zone-green">
+                <div>Green Zone</div>
+                <div>(60-140 BPM)</div>
+                <div style="font-size: 1.5em;">60</div>
+            </div>
+            <div class="zone-card zone-yellow">
+                <div>Yellow Zone</div>
+                <div>(140-170 BPM)</div>
+                <div style="font-size: 1.5em;">0</div>
+            </div>
+            <div class="zone-card zone-orange">
+                <div>Orange Zone</div>
+                <div>(170-190 BPM)</div>
+                <div style="font-size: 1.5em;">0</div>
+            </div>
+            <div class="zone-card zone-red">
+                <div>Red Zone</div>
+                <div>(>190 or <60 BPM)</div>
+                <div style="font-size: 1.5em;">0</div>
+            </div>
+        </div>
+        <div class="alert alert-success">✅ No medical alerts detected - all vitals within normal parameters</div>
+                </div>
+                
+                <!-- Physical Performance -->
+                <div class="section">
+                    <h2>🏃 Physical Performance Analysis</h2>
+                    <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">3,604</div>
+                <div class="metric-label">Total Steps</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">60</div>
+                <div class="metric-label">Average Steps</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-value">28</div>
+                <div class="metric-label">Position Changes</div>
+            </div>
+            </div><div class="alert alert-warning">⚠️ Moderate activity level - consider increasing movement during appropriate phases</div>
+                </div>
+                
+                <!-- Tactical Analysis -->
+                <div class="section">
+                    <h2>⚔️ Tactical Analysis</h2>
+                    <h3>📊 Posture Distribution Analysis</h3><div class="metric-grid">
+                <div class="metric-card">
+                    <div class="metric-value">68.3%</div>
+                    <div class="metric-label">Standing</div>
+                    <div style="font-size: 0.8em; color: #6c757d;">(41 records)</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-value">16.7%</div>
+                    <div class="metric-label">Moving</div>
+                    <div style="font-size: 0.8em; color: #6c757d;">(10 records)</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-value">10.0%</div>
+                    <div class="metric-label">Kneeling</div>
+                    <div style="font-size: 0.8em; color: #6c757d;">(6 records)</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-value">5.0%</div>
+                    <div class="metric-label">Prone</div>
+                    <div style="font-size: 0.8em; color: #6c757d;">(3 records)</div>
+                </div>
+                </div><div class="alert alert-warning">⚠️ Consider increased use of prone positioning during engagement</div>
+                </div>
+                
+                <!-- Battle Timeline Context -->
+                <div class="section">
+                    <h2>⏰ Battle Timeline Context</h2>
+                    
+            <div class="alert alert-warning">
+                <strong>No Battle Period Detected:</strong> Insufficient data duration or no clear engagement phase identified.
+                Analysis performed on available data as general exercise monitoring.
+            </div>
+            
+                </div>
+                
+                <!-- Equipment Status -->
+                <div class="section">
+                    <h2>🔧 Equipment & Communication Status</h2>
+                    <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">96.0%</div>
+                <div class="metric-label">Average Battery</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">96.0%</div>
+                <div class="metric-label">Minimum Battery</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-value">-63.7 dBm</div>
+                <div class="metric-label">Signal Strength</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">Good</div>
+                <div class="metric-label">Communication Quality</div>
+            </div>
+            </div>
+                </div>
+                
+                
+                <!-- Geospatial Analysis -->
+                <div class="section">
+                    <h2>🌍 Geospatial & Movement Analysis</h2>
+                    
+                    <div class="alert alert-info">
+                        <strong>Movement Summary:</strong> Soldier moved <strong>1455 meters</strong> 
+                        over the mission with <strong>Active Movement</strong> pattern. 
+                        Primary direction was <strong>NE</strong> with 
+                        <strong>Circuitous Route</strong> route efficiency.
+                    </div>
+                    
+                    <h3>📏 Distance & Speed Metrics</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">1455m</div>
+                            <div class="metric-label">Total Distance</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" style="color: #27ae60;">1.64 m/s</div>
+                            <div class="metric-label">Average Speed</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">1.94 m/s</div>
+                            <div class="metric-label">Maximum Speed</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" style="color: #e74c3c;">0.15</div>
+                            <div class="metric-label">Path Efficiency</div>
+                        </div>
+                    </div>
+                    
+                    <h3>⛰️ Elevation Analysis</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">0.0m</div>
+                            <div class="metric-label">Elevation Gain</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">0.0m</div>
+                            <div class="metric-label">Elevation Loss</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">0.0m</div>
+                            <div class="metric-label">Max Elevation</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">0</div>
+                            <div class="metric-label">Elevation Changes</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Terrain Assessment:</strong> Minimal Elevation Change - 
+                        Total vertical movement of 0.0 meters
+                    </div>
+                    
+                    <h3>🧭 Direction & Navigation</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">NE</div>
+                            <div class="metric-label">Dominant Direction</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">57°</div>
+                            <div class="metric-label">Average Bearing</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">44</div>
+                            <div class="metric-label">Direction Changes</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">0.85</div>
+                            <div class="metric-label">Route Variance</div>
+                        </div>
+                    </div>
+                    
+                    <h3>🏃 Movement Pattern Analysis</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">1</div>
+                            <div class="metric-label">Stationary Periods</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">59</div>
+                            <div class="metric-label">Tactical Movement</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">0</div>
+                            <div class="metric-label">Rapid Movement</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">40878m²</div>
+                            <div class="metric-label">Area Covered</div>
+                        </div>
+                    </div>
+                    
+                    <h4>🎯 Movement Recommendations</h4><div class="breakdown-section"><div class="breakdown-item">🗺️ <strong>Navigation:</strong> Route efficiency could be improved - review navigation procedures</div><div class="breakdown-item">🧭 <strong>Navigation:</strong> Frequent direction changes detected - review navigation planning and execution</div><div class="breakdown-item">🎯 <strong>Tactics:</strong> Minimal stationary periods - ensure adequate observation and security halts</div></div>
+                </div>
+        
+                <!-- Path Visualization -->
+                <div class="section">
+                    <h2>🗺️ Movement Path Visualization</h2>
+                    <html>
+<head><meta charset="utf-8" /></head>
+<body>
+    <div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.0.1.min.js" integrity="sha256-oy6Be7Eh6eiQFs5M7oXuPxxm9qbJXEtTpfSI93dW16Q=" crossorigin="anonymous"></script>                <div id="geospatial_plot_BLUE03" class="plotly-graph-div" style="height:800px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("geospatial_plot_BLUE03")) {                    Plotly.newPlot(                        "geospatial_plot_BLUE03",                        [{"lat":[32.387877,32.387771,32.387571,32.387371,32.387571,32.387371,32.387571,32.387771,32.387834,32.388034,32.388231,32.388031,32.388154,32.388072,32.388272,32.388421,32.388593,32.388393,32.388193,32.388225,32.38841,32.38861,32.38881,32.38861,32.38841,32.388483,32.388683,32.388483,32.388683,32.388483,32.388683,32.388538,32.388473,32.388273,32.388473,32.388673,32.388514,32.388314,32.388114,32.388184,32.388163,32.388363,32.388163,32.388092,32.388292,32.388092,32.388292,32.388092,32.388187,32.388202,32.388185,32.388385,32.388585,32.388487,32.388287,32.388487,32.388594,32.388713,32.388913,32.388713],"line":{"color":"blue","width":3},"lon":[-84.797614,-84.797814,-84.797614,-84.797414,-84.797214,-84.797355,-84.797155,-84.797006,-84.797094,-84.796894,-84.7969,-84.7971,-84.796998,-84.796798,-84.796598,-84.796398,-84.796598,-84.796398,-84.796598,-84.796798,-84.796982,-84.796782,-84.796813,-84.796613,-84.796566,-84.796366,-84.796566,-84.796397,-84.796597,-84.796397,-84.796362,-84.796162,-84.795967,-84.795906,-84.796106,-84.796306,-84.796506,-84.796706,-84.796506,-84.796706,-84.796906,-84.796706,-84.796753,-84.796553,-84.796353,-84.796153,-84.796353,-84.796153,-84.796099,-84.796202,-84.796091,-84.796204,-84.796245,-84.796045,-84.795914,-84.795715,-84.795515,-84.795315,-84.795275,-84.795475],"marker":{"color":[0.0,1.4781310843942754,1.9404974675797402,1.9404992560620145,1.9404992561647778,1.7254435617568773,1.9404992560620145,1.7515887095446343,0.7221912017342949,1.9404951156938972,1.4608429448939122,1.9404933540426457,1.1131312607953239,1.3917312270569526,1.9404929873961514,1.6695530817264876,1.786929266648115,1.940490116775412,1.9404919053400176,1.2742383005367763,1.7909225078608968,1.9404899648375442,1.4952446330488791,1.9404881762133876,1.511509048787267,1.3639081717870813,1.9404893119197422,1.8213351878910196,1.9404893120225042,1.9404893120225042,1.4986999204122295,1.6500830872166585,1.3123206327456278,1.5309826326642855,1.94049118992949,1.9404894013618725,1.7194919625191145,1.940490823332509,1.9404926118581125,1.3552421206429552,1.261604998873748,1.9404921736186551,1.511509205390016,1.3580980279361836,1.9404928085080604,1.9404928084566788,1.9404928084566788,1.9404928084566788,0.7811598962741482,0.6542791940240682,0.7061752506138709,1.6426978049810208,1.504649441512015,1.4474682440546922,1.694271553123921,1.9364582877163246,1.482076758326273,1.5315282452397332,1.5035941929065146,1.9404872550986716],"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"showscale":true,"size":8},"mode":"markers+lines","name":"Path","showlegend":false,"text":["Time: 2025-08-06 07:00:00\u003cbr\u003eSpeed: 0.00 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:00:15\u003cbr\u003eSpeed: 1.48 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:00:30\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:00:45\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:01:00\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:01:15\u003cbr\u003eSpeed: 1.73 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:01:30\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:01:45\u003cbr\u003eSpeed: 1.75 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:02:00\u003cbr\u003eSpeed: 0.72 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:02:15\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:02:30\u003cbr\u003eSpeed: 1.46 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:02:45\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:03:00\u003cbr\u003eSpeed: 1.11 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:03:15\u003cbr\u003eSpeed: 1.39 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:03:30\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:03:45\u003cbr\u003eSpeed: 1.67 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:04:00\u003cbr\u003eSpeed: 1.79 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:04:15\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:04:30\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:04:45\u003cbr\u003eSpeed: 1.27 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:05:00\u003cbr\u003eSpeed: 1.79 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:05:15\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:05:30\u003cbr\u003eSpeed: 1.50 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:05:45\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:06:00\u003cbr\u003eSpeed: 1.51 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:06:15\u003cbr\u003eSpeed: 1.36 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:06:30\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:06:45\u003cbr\u003eSpeed: 1.82 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:07:00\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:07:15\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:07:30\u003cbr\u003eSpeed: 1.50 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:07:45\u003cbr\u003eSpeed: 1.65 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:08:00\u003cbr\u003eSpeed: 1.31 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:08:15\u003cbr\u003eSpeed: 1.53 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:08:30\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:08:45\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:09:00\u003cbr\u003eSpeed: 1.72 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:09:15\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:09:30\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:09:45\u003cbr\u003eSpeed: 1.36 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:10:00\u003cbr\u003eSpeed: 1.26 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:10:15\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:10:30\u003cbr\u003eSpeed: 1.51 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:10:45\u003cbr\u003eSpeed: 1.36 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:11:00\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:11:15\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:11:30\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:11:45\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:12:00\u003cbr\u003eSpeed: 0.78 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:12:15\u003cbr\u003eSpeed: 0.65 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:12:30\u003cbr\u003eSpeed: 0.71 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:12:45\u003cbr\u003eSpeed: 1.64 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:13:00\u003cbr\u003eSpeed: 1.50 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:13:15\u003cbr\u003eSpeed: 1.45 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:13:30\u003cbr\u003eSpeed: 1.69 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:13:45\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:14:00\u003cbr\u003eSpeed: 1.48 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:14:15\u003cbr\u003eSpeed: 1.53 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:14:30\u003cbr\u003eSpeed: 1.50 m\u002fs\u003cbr\u003eElevation: 0.0m","Time: 2025-08-06 07:14:45\u003cbr\u003eSpeed: 1.94 m\u002fs\u003cbr\u003eElevation: 0.0m"],"type":"scattermapbox","subplot":"mapbox"},{"line":{"color":"brown","width":2},"marker":{"size":4},"mode":"lines+markers","name":"Elevation","showlegend":false,"x":["2025-08-06T07:00:00","2025-08-06T07:00:15","2025-08-06T07:00:30","2025-08-06T07:00:45","2025-08-06T07:01:00","2025-08-06T07:01:15","2025-08-06T07:01:30","2025-08-06T07:01:45","2025-08-06T07:02:00","2025-08-06T07:02:15","2025-08-06T07:02:30","2025-08-06T07:02:45","2025-08-06T07:03:00","2025-08-06T07:03:15","2025-08-06T07:03:30","2025-08-06T07:03:45","2025-08-06T07:04:00","2025-08-06T07:04:15","2025-08-06T07:04:30","2025-08-06T07:04:45","2025-08-06T07:05:00","2025-08-06T07:05:15","2025-08-06T07:05:30","2025-08-06T07:05:45","2025-08-06T07:06:00","2025-08-06T07:06:15","2025-08-06T07:06:30","2025-08-06T07:06:45","2025-08-06T07:07:00","2025-08-06T07:07:15","2025-08-06T07:07:30","2025-08-06T07:07:45","2025-08-06T07:08:00","2025-08-06T07:08:15","2025-08-06T07:08:30","2025-08-06T07:08:45","2025-08-06T07:09:00","2025-08-06T07:09:15","2025-08-06T07:09:30","2025-08-06T07:09:45","2025-08-06T07:10:00","2025-08-06T07:10:15","2025-08-06T07:10:30","2025-08-06T07:10:45","2025-08-06T07:11:00","2025-08-06T07:11:15","2025-08-06T07:11:30","2025-08-06T07:11:45","2025-08-06T07:12:00","2025-08-06T07:12:15","2025-08-06T07:12:30","2025-08-06T07:12:45","2025-08-06T07:13:00","2025-08-06T07:13:15","2025-08-06T07:13:30","2025-08-06T07:13:45","2025-08-06T07:14:00","2025-08-06T07:14:15","2025-08-06T07:14:30","2025-08-06T07:14:45"],"y":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"type":"scatter","xaxis":"x","yaxis":"y"},{"line":{"color":"green","width":2},"marker":{"size":4},"mode":"lines+markers","name":"Speed","showlegend":false,"x":["2025-08-06T07:00:00","2025-08-06T07:00:15","2025-08-06T07:00:30","2025-08-06T07:00:45","2025-08-06T07:01:00","2025-08-06T07:01:15","2025-08-06T07:01:30","2025-08-06T07:01:45","2025-08-06T07:02:00","2025-08-06T07:02:15","2025-08-06T07:02:30","2025-08-06T07:02:45","2025-08-06T07:03:00","2025-08-06T07:03:15","2025-08-06T07:03:30","2025-08-06T07:03:45","2025-08-06T07:04:00","2025-08-06T07:04:15","2025-08-06T07:04:30","2025-08-06T07:04:45","2025-08-06T07:05:00","2025-08-06T07:05:15","2025-08-06T07:05:30","2025-08-06T07:05:45","2025-08-06T07:06:00","2025-08-06T07:06:15","2025-08-06T07:06:30","2025-08-06T07:06:45","2025-08-06T07:07:00","2025-08-06T07:07:15","2025-08-06T07:07:30","2025-08-06T07:07:45","2025-08-06T07:08:00","2025-08-06T07:08:15","2025-08-06T07:08:30","2025-08-06T07:08:45","2025-08-06T07:09:00","2025-08-06T07:09:15","2025-08-06T07:09:30","2025-08-06T07:09:45","2025-08-06T07:10:00","2025-08-06T07:10:15","2025-08-06T07:10:30","2025-08-06T07:10:45","2025-08-06T07:11:00","2025-08-06T07:11:15","2025-08-06T07:11:30","2025-08-06T07:11:45","2025-08-06T07:12:00","2025-08-06T07:12:15","2025-08-06T07:12:30","2025-08-06T07:12:45","2025-08-06T07:13:00","2025-08-06T07:13:15","2025-08-06T07:13:30","2025-08-06T07:13:45","2025-08-06T07:14:00","2025-08-06T07:14:15","2025-08-06T07:14:30","2025-08-06T07:14:45"],"y":[0.0,1.4781310843942754,1.9404974675797402,1.9404992560620145,1.9404992561647778,1.7254435617568773,1.9404992560620145,1.7515887095446343,0.7221912017342949,1.9404951156938972,1.4608429448939122,1.9404933540426457,1.1131312607953239,1.3917312270569526,1.9404929873961514,1.6695530817264876,1.786929266648115,1.940490116775412,1.9404919053400176,1.2742383005367763,1.7909225078608968,1.9404899648375442,1.4952446330488791,1.9404881762133876,1.511509048787267,1.3639081717870813,1.9404893119197422,1.8213351878910196,1.9404893120225042,1.9404893120225042,1.4986999204122295,1.6500830872166585,1.3123206327456278,1.5309826326642855,1.94049118992949,1.9404894013618725,1.7194919625191145,1.940490823332509,1.9404926118581125,1.3552421206429552,1.261604998873748,1.9404921736186551,1.511509205390016,1.3580980279361836,1.9404928085080604,1.9404928084566788,1.9404928084566788,1.9404928084566788,0.7811598962741482,0.6542791940240682,0.7061752506138709,1.6426978049810208,1.504649441512015,1.4474682440546922,1.694271553123921,1.9364582877163246,1.482076758326273,1.5315282452397332,1.5035941929065146,1.9404872550986716],"type":"scatter","xaxis":"x2","yaxis":"y2"},{"line":{"color":"red","width":2},"marker":{"size":4},"mode":"lines+markers","name":"Bearing","showlegend":false,"x":["2025-08-06T07:00:00","2025-08-06T07:00:15","2025-08-06T07:00:30","2025-08-06T07:00:45","2025-08-06T07:01:00","2025-08-06T07:01:15","2025-08-06T07:01:30","2025-08-06T07:01:45","2025-08-06T07:02:00","2025-08-06T07:02:15","2025-08-06T07:02:30","2025-08-06T07:02:45","2025-08-06T07:03:00","2025-08-06T07:03:15","2025-08-06T07:03:30","2025-08-06T07:03:45","2025-08-06T07:04:00","2025-08-06T07:04:15","2025-08-06T07:04:30","2025-08-06T07:04:45","2025-08-06T07:05:00","2025-08-06T07:05:15","2025-08-06T07:05:30","2025-08-06T07:05:45","2025-08-06T07:06:00","2025-08-06T07:06:15","2025-08-06T07:06:30","2025-08-06T07:06:45","2025-08-06T07:07:00","2025-08-06T07:07:15","2025-08-06T07:07:30","2025-08-06T07:07:45","2025-08-06T07:08:00","2025-08-06T07:08:15","2025-08-06T07:08:30","2025-08-06T07:08:45","2025-08-06T07:09:00","2025-08-06T07:09:15","2025-08-06T07:09:30","2025-08-06T07:09:45","2025-08-06T07:10:00","2025-08-06T07:10:15","2025-08-06T07:10:30","2025-08-06T07:10:45","2025-08-06T07:11:00","2025-08-06T07:11:15","2025-08-06T07:11:30","2025-08-06T07:11:45","2025-08-06T07:12:00","2025-08-06T07:12:15","2025-08-06T07:12:30","2025-08-06T07:12:45","2025-08-06T07:13:00","2025-08-06T07:13:15","2025-08-06T07:13:30","2025-08-06T07:13:45","2025-08-06T07:14:00","2025-08-06T07:14:15","2025-08-06T07:14:30","2025-08-06T07:14:45"],"y":[0.0,237.88629214610194,139.82075393131674,139.82069139981752,40.17920147390072,210.76680512793735,40.17920147189392,32.174376327124776,310.29095365464684,40.179056704298034,358.5267390403365,220.17910223484543,35.00224746001419,115.897882888737,40.17898228298736,48.57976689282009,315.5232541849992,139.8210109562349,220.17905158005763,280.72899065409933,319.97406875446734,40.178876595696806,352.5431143234727,139.82107880915743,168.77589698801376,66.623957337192,319.82114623267495,144.49030133210107,319.82114623066815,139.8210390990189,8.406097804337833,130.64810863682072,111.54113317252865,165.55716126578898,319.8210805675054,319.8211431033161,226.72719471629426,220.17901374466294,139.8209237178786,292.51291062444164,262.91210556841474,40.178953829206876,191.22413292585827,112.80170831811137,40.17897603172844,139.82091683949494,319.82102397027836,139.82091683949494,25.640842649207798,279.7849553335121,100.27978512988699,334.49388628242605,350.1789094010271,120.1252353903239,151.05272400754615,40.03740513547638,57.643248701402115,54.830887412037896,9.58601669368801,220.17888898039914],"type":"scatter","xaxis":"x3","yaxis":"y3"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"mapbox":{"domain":{"x":[0.0,0.45],"y":[0.625,1.0]},"center":{"lat":32.388275300000004,"lon":-84.79652825000004},"style":"open-street-map","zoom":15},"xaxis":{"anchor":"y","domain":[0.55,1.0],"title":{"text":"Time"}},"yaxis":{"anchor":"x","domain":[0.625,1.0],"title":{"text":"Elevation (m)"}},"xaxis2":{"anchor":"y2","domain":[0.0,0.45],"title":{"text":"Time"}},"yaxis2":{"anchor":"x2","domain":[0.0,0.375],"title":{"text":"Speed (m\u002fs)"}},"xaxis3":{"anchor":"y3","domain":[0.55,1.0],"title":{"text":"Time"}},"yaxis3":{"anchor":"x3","domain":[0.0,0.375],"title":{"text":"Bearing (degrees)"}},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Movement Path","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Elevation Profile","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Speed Profile","x":0.225,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Bearing\u002fDirection","x":0.775,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"}],"title":{"text":"Geospatial Analysis - BLUE03"},"height":800,"showlegend":false},                        {"responsive": true}                    )                };            </script>        </div>
+</body>
+</html>
+                </div>
+                <!-- Recommendations -->
+                <div class="section">
+                    <h2>💡 Recommendations & Action Items</h2>
+                    <div class="breakdown-section"><div class="breakdown-item">🛡️ <strong>Tactical:</strong> Reduce standing exposure during combat - increase use of cover positions</div><div class="breakdown-item">⬇️ <strong>Positioning:</strong> Increase prone positioning usage for better tactical advantage</div></div>
+                </div>
+                
+                <!-- Report Footer -->
+                <div class="footer">
+                    <p><strong>🎖️ Enhanced Individual Soldier Report System</strong></p>
+                    <p>Advanced Medical Monitoring and Performance Assessment Platform</p>
+                    <p>ICD Version 2.0 Compliant | Generated: 2025-08-13 12:15:17</p>
+                    <p>Report ID: BLUE03_20250813_121517 | Classification: FOR OFFICIAL USE ONLY</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        
