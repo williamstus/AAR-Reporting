@@ -3,6 +3,7 @@
 Enhanced Report Generator - ICD Compliant Implementation
 Fully compliant with Interface Control Document and Requirements Specifications
 UPDATED: Compatible with original main.py initialization pattern
+PATCHED: Fixed Callsign column access issues
 """
 
 import pandas as pd
@@ -331,8 +332,16 @@ class PerformanceScorer:
         
         # Get battle timeline data
         pre_battle_data, battle_data = self.battle_analyzer.get_battle_data()
-        soldier_pre_battle = pre_battle_data[pre_battle_data['Callsign'] == callsign]
-        soldier_battle = battle_data[battle_data['Callsign'] == callsign]
+        
+        # PATCHED: Find correct callsign column
+        callsign_col = self._find_callsign_column(pre_battle_data)
+        if callsign_col is None:
+            callsign_col = self._find_callsign_column(battle_data)
+        if callsign_col is None:
+            callsign_col = 'Callsign'  # Default fallback
+        
+        soldier_pre_battle = pre_battle_data[pre_battle_data[callsign_col] == callsign] if len(pre_battle_data) > 0 else pd.DataFrame()
+        soldier_battle = battle_data[battle_data[callsign_col] == callsign] if len(battle_data) > 0 else pd.DataFrame()
         
         # Physical performance scoring
         physical_score = self._score_physical_performance(soldier_pre_battle, soldier_battle, breakdown)
@@ -361,6 +370,22 @@ class PerformanceScorer:
                                      for b in breakdown.bonus_details if '+' in b])
         
         return final_score, breakdown
+    
+    def _find_callsign_column(self, data: pd.DataFrame) -> Optional[str]:
+        """PATCHED: Find the correct callsign column in the data"""
+        if data.empty:
+            return None
+        
+        if 'Callsign' in data.columns:
+            return 'Callsign'
+        elif 'callsign' in data.columns:
+            return 'callsign'
+        else:
+            # Look for any column that might contain callsigns
+            possible_cols = [col for col in data.columns if 'call' in col.lower()]
+            if possible_cols:
+                return possible_cols[0]
+        return None
     
     def _score_physical_performance(self, pre_battle: pd.DataFrame, battle: pd.DataFrame, 
                                   breakdown: PerformanceBreakdown) -> float:
@@ -514,6 +539,7 @@ class ReportGenerator:
     """
     ICD-compliant report generator implementing all requirements
     UPDATED: Compatible with original main.py initialization pattern
+    PATCHED: Fixed callsign column access issues
     """
     
     def __init__(self, event_bus, html_renderer):
@@ -553,7 +579,7 @@ class ReportGenerator:
         try:
             # Subscribe to data loaded events
             self.event_bus.subscribe(
-                "DATA_LOADED",
+                "data_loaded",  # Use lowercase to match your event system
                 self._handle_data_loaded,
                 priority=10,
                 handler_id=f"{self.component_id}_data_loaded"
@@ -561,7 +587,7 @@ class ReportGenerator:
             
             # Subscribe to report generation requests
             self.event_bus.subscribe(
-                "REPORT_GENERATION_REQUESTED",
+                "report_generation_requested",  # Use lowercase to match your event system
                 self._handle_report_generation_request,
                 priority=10,
                 handler_id=f"{self.component_id}_report_request"
@@ -569,51 +595,122 @@ class ReportGenerator:
             
             # Subscribe to analysis completion
             self.event_bus.subscribe(
-                "ANALYSIS_COMPLETED", 
+                "analysis_completed",  # Use lowercase to match your event system
                 self._handle_analysis_completed,
                 priority=5,
                 handler_id=f"{self.component_id}_analysis_completed"
             )
             
-            self._publish_status("Report generator event handlers registered")
+            self.logger.info("Report generator event handlers registered successfully")
+            print("DEBUG: Enhanced report generator event handlers registered")
             
         except Exception as e:
             self.logger.warning(f"Could not setup event handlers: {e}")
+            print(f"DEBUG: Failed to setup event handlers: {e}")
     
     def _handle_data_loaded(self, event) -> None:
         """Handle data loaded event and initialize analyzers"""
+        print("DEBUG: Enhanced report generator received DATA_LOADED event!")
+        self.logger.info("Enhanced report generator received DATA_LOADED event")
+        
         try:
             # Extract data from event - works with your DataLoadedEvent structure
             dataset = event.data.get('dataset') if hasattr(event, 'data') and event.data else None
             
+            print(f"DEBUG: Dataset type: {type(dataset)}")
+            print(f"DEBUG: Event data keys: {list(event.data.keys()) if hasattr(event, 'data') and event.data else 'No data'}")
+            print(f"DEBUG: Dataset attributes: {dir(dataset) if dataset else 'None'}")
+            
             if dataset is not None:
                 # Extract the actual DataFrame from the dataset
+                # Try different possible attribute names
+                dataframe = None
+                
                 if hasattr(dataset, 'data'):
-                    self.data = dataset.data  # SoldierDataset.data
+                    dataframe = dataset.data  # SoldierDataset.data
+                    print(f"DEBUG: Found dataset.data")
                 elif hasattr(dataset, 'dataframe'):
-                    self.data = dataset.dataframe  # Alternative attribute name
+                    dataframe = dataset.dataframe  # Alternative attribute name
+                    print(f"DEBUG: Found dataset.dataframe")
+                elif hasattr(dataset, 'df'):
+                    dataframe = dataset.df  # Another possible name
+                    print(f"DEBUG: Found dataset.df")
+                elif hasattr(dataset, 'raw_dataframe'):
+                    dataframe = dataset.raw_dataframe  # PATCHED: Check for raw_dataframe
+                    print(f"DEBUG: Found dataset.raw_dataframe")
                 else:
                     # If dataset is already a DataFrame
-                    self.data = dataset
+                    import pandas as pd
+                    if isinstance(dataset, pd.DataFrame):
+                        dataframe = dataset
+                        print(f"DEBUG: Dataset is already a DataFrame")
+                    else:
+                        # Try to find any attribute that's a DataFrame
+                        for attr_name in dir(dataset):
+                            if not attr_name.startswith('_'):
+                                attr_value = getattr(dataset, attr_name)
+                                if isinstance(attr_value, pd.DataFrame):
+                                    dataframe = attr_value
+                                    print(f"DEBUG: Found DataFrame in attribute: {attr_name}")
+                                    break
                 
-                # Initialize analyzers with the data
-                if self.data is not None and len(self.data) > 0:
-                    self.battle_analyzer = BattleTimelineAnalyzer(self.data)
-                    self.safety_analyzer = SafetyAnalyzer()
-                    self.performance_scorer = PerformanceScorer(self.battle_analyzer)
+                if dataframe is not None:
+                    self.data = dataframe
+                    print(f"DEBUG: Successfully extracted dataframe - shape: {self.data.shape}")
+                    print(f"DEBUG: Available columns: {list(self.data.columns)}")
                     
-                    self.logger.info(f"Report generator initialized with {len(self.data)} records")
-                    self._publish_status(f"Report generator ready with {len(self.data)} data records")
+                    # PATCHED: Debug callsign column
+                    callsign_col = self._find_callsign_column(self.data)
+                    if callsign_col:
+                        unique_callsigns = self.data[callsign_col].unique()
+                        print(f"DEBUG: Found callsign column '{callsign_col}' with {len(unique_callsigns)} unique values: {list(unique_callsigns)[:10]}")
+                    else:
+                        print("DEBUG: No callsign column found!")
+                    
+                    # Initialize analyzers with the data
+                    if len(self.data) > 0:
+                        self.battle_analyzer = BattleTimelineAnalyzer(self.data)
+                        self.safety_analyzer = SafetyAnalyzer()
+                        self.performance_scorer = PerformanceScorer(self.battle_analyzer)
+                        
+                        self.logger.info(f"Enhanced report generator initialized with {len(self.data)} records")
+                        print(f"DEBUG: Enhanced report generator ready with {len(self.data)} records")
+                        self._publish_status(f"Enhanced report generator ready with {len(self.data)} data records")
+                    else:
+                        self.logger.warning("DataFrame is empty")
+                        print("DEBUG: DataFrame is empty")
+                        self._publish_status("DataFrame is empty", "warning")
                 else:
-                    self.logger.warning("Data loaded but DataFrame is empty")
-                    self._publish_status("Data loaded but no records found", "warning")
+                    self.logger.warning("Could not find DataFrame in SoldierDataset")
+                    print("DEBUG: Could not find DataFrame in SoldierDataset")
+                    self._publish_status("Could not find DataFrame in SoldierDataset", "warning")
             else:
                 self.logger.warning("No valid dataset found in data loaded event")
+                print("DEBUG: No valid dataset found in data loaded event")
                 self._publish_status("No valid dataset found in data loaded event", "warning")
                 
         except Exception as e:
             self.logger.error(f"Error handling data loaded event: {e}")
+            print(f"DEBUG: Error handling data loaded event: {e}")
+            import traceback
+            print(f"DEBUG: Full traceback: {traceback.format_exc()}")
             self._publish_error(e, "data_loaded_handling")
+    
+    def _find_callsign_column(self, data: pd.DataFrame) -> Optional[str]:
+        """PATCHED: Find the correct callsign column in the data"""
+        if data.empty:
+            return None
+        
+        if 'Callsign' in data.columns:
+            return 'Callsign'
+        elif 'callsign' in data.columns:
+            return 'callsign'
+        else:
+            # Look for any column that might contain callsigns
+            possible_cols = [col for col in data.columns if 'call' in col.lower()]
+            if possible_cols:
+                return possible_cols[0]
+        return None
     
     def _handle_analysis_completed(self, event) -> None:
         """Handle analysis completion event"""
@@ -720,14 +817,42 @@ class ReportGenerator:
     def generate_individual_report(self, callsign: str, output_path: Path) -> str:
         """
         Generate comprehensive individual soldier report per ICD FR-024 through FR-028
+        PATCHED: Fixed callsign column access issues
         """
         if not self._is_ready():
             raise ValueError("Report generator not ready - no data loaded")
-            
-        soldier_data = self.data[self.data['Callsign'] == callsign].copy()
+        
+        # PATCHED: Debug and find correct callsign column
+        print(f"DEBUG: Available columns: {list(self.data.columns)}")
+        print(f"DEBUG: Looking for callsign: {callsign}")
+        print(f"DEBUG: Data shape: {self.data.shape}")
+        
+        # Find the correct callsign column (handle both original and mapped names)
+        callsign_col = self._find_callsign_column(self.data)
+        
+        if callsign_col is None:
+            available_cols = ', '.join(self.data.columns)
+            raise ValueError(f"No callsign column found. Available columns: {available_cols}")
+        
+        print(f"DEBUG: Using callsign column: {callsign_col}")
+        print(f"DEBUG: Unique callsigns in data: {self.data[callsign_col].unique()[:10]}")  # Show first 10
+        
+        # Filter data for the specific soldier
+        soldier_data = self.data[self.data[callsign_col] == callsign].copy()
         
         if len(soldier_data) == 0:
-            raise ValueError(f"No data found for soldier {callsign}")
+            # Try case-insensitive match
+            soldier_data = self.data[self.data[callsign_col].str.upper() == callsign.upper()].copy()
+            
+            if len(soldier_data) == 0:
+                available_callsigns = self.data[callsign_col].unique()
+                raise ValueError(f"No data found for soldier {callsign}. Available callsigns: {list(available_callsigns)[:20]}")
+        
+        print(f"DEBUG: Found {len(soldier_data)} records for {callsign}")
+        
+        # Ensure the soldier_data uses 'Callsign' column name for consistency with the rest of the code
+        if callsign_col != 'Callsign':
+            soldier_data = soldier_data.rename(columns={callsign_col: 'Callsign'})
         
         # Comprehensive analysis
         comprehensive_stats = self._calculate_comprehensive_stats(callsign, soldier_data)
@@ -1540,18 +1665,23 @@ class ReportGenerator:
         """Publish status message via event bus"""
         try:
             if hasattr(self.event_bus, 'publish'):
-                from src.core.events import Event, EventType
-                
-                status_event = Event(
-                    type=EventType.STATUS_UPDATE.value,
-                    data={
-                        'component': self.component_id,
-                        'message': message,
-                        'level': level
-                    },
-                    source=self.component_id
-                )
-                self.event_bus.publish(status_event)
+                # Try to import the events, but handle gracefully if not available
+                try:
+                    from src.core.events import Event, EventType
+                    
+                    status_event = Event(
+                        type=EventType.STATUS_UPDATE.value,
+                        data={
+                            'component': self.component_id,
+                            'message': message,
+                            'level': level
+                        },
+                        source=self.component_id
+                    )
+                    self.event_bus.publish(status_event)
+                except ImportError:
+                    # Fallback - just log the status
+                    self.logger.info(f"Status: {message}")
         except Exception as e:
             self.logger.warning(f"Could not publish status: {e}")
     
@@ -1559,19 +1689,24 @@ class ReportGenerator:
         """Publish error via event bus"""
         try:
             if hasattr(self.event_bus, 'publish'):
-                from src.core.events import Event, EventType
-                
-                error_event = Event(
-                    type=EventType.ERROR_OCCURRED.value,
-                    data={
-                        'component': self.component_id,
-                        'error': str(error),
-                        'error_type': type(error).__name__,
-                        'context': context
-                    },
-                    source=self.component_id
-                )
-                self.event_bus.publish(error_event)
+                # Try to import the events, but handle gracefully if not available
+                try:
+                    from src.core.events import Event, EventType
+                    
+                    error_event = Event(
+                        type=EventType.ERROR_OCCURRED.value,
+                        data={
+                            'component': self.component_id,
+                            'error': str(error),
+                            'error_type': type(error).__name__,
+                            'context': context
+                        },
+                        source=self.component_id
+                    )
+                    self.event_bus.publish(error_event)
+                except ImportError:
+                    # Fallback - just log the error
+                    self.logger.error(f"Error in {context}: {error}")
         except Exception as e:
             self.logger.warning(f"Could not publish error: {e}")
     

@@ -69,10 +69,10 @@ class FortMooreDataGenerator:
         
         # Fort Moore training area coordinates
         self.locations = {
-            'GENERAL_FIELD': Location(32.3600, -84.9350),      # BLUEFOR start
-            'RESIDENTIAL_COMPOUND': Location(32.3630, -84.9380), # OPFOR start  
-            'BLACKHAWK_TRAIL': Location(32.3615, -84.9365),     # Primary objective
-            'MCKENNA_TOWER': Location(32.3620, -84.9370)        # OPFOR objective
+            'GENERAL_FIELD': Location(32.387757, -84.797814),      # BLUEFOR start
+            'RESIDENTIAL_COMPOUND': Location(32.395052, -84.820543), # OPFOR start  
+            'BLACKHAWK_TRAIL': Location(32.383590, -84.813586),     # Primary objective
+            'MCKENNA_TOWER': Location(32.366973, -84.813285)        # OPFOR objective
         }
         
         # Force structure

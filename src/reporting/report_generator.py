@@ -3,10 +3,13 @@
 Enhanced Report Generator - ICD Compliant Implementation
 Fully compliant with Interface Control Document and Requirements Specifications
 UPDATED: Compatible with original main.py initialization pattern
+PATCHED: Fixed Callsign column access issues
+ENHANCED: Added geospatial analysis capabilities
 """
 
 import pandas as pd
 import numpy as np
+import math
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
@@ -14,6 +17,16 @@ from dataclasses import dataclass
 from enum import Enum
 import json
 import logging
+
+# Additional imports for geospatial analysis
+try:
+    import plotly.graph_objects as go
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    print("INFO: Plotly not available - basic path visualization will be used")
 
 
 class RiskLevel(Enum):
@@ -68,6 +81,60 @@ class SafetyMetrics:
             self.heart_rate_zones = HeartRateZones()
         if self.medical_alerts is None:
             self.medical_alerts = []
+
+
+@dataclass
+class GeospatialMetrics:
+    """Geospatial analysis metrics for soldier movement"""
+    # Distance and movement
+    total_distance_meters: float = 0.0
+    avg_speed_mps: float = 0.0  # meters per second
+    max_speed_mps: float = 0.0
+    min_speed_mps: float = 0.0
+    
+    # Elevation analysis
+    total_elevation_gain: float = 0.0
+    total_elevation_loss: float = 0.0
+    max_elevation: float = 0.0
+    min_elevation: float = 0.0
+    avg_elevation: float = 0.0
+    elevation_changes_count: int = 0
+    
+    # Direction and bearing analysis
+    dominant_direction: str = "Unknown"  # N, NE, E, SE, S, SW, W, NW
+    direction_changes_count: int = 0
+    avg_bearing_degrees: float = 0.0
+    bearing_variance: float = 0.0
+    
+    # Movement patterns
+    stationary_periods: int = 0
+    rapid_movement_periods: int = 0
+    tactical_movement_periods: int = 0
+    
+    # Path analysis
+    path_linearity: float = 0.0  # 1.0 = straight line, 0.0 = very circuitous
+    area_covered_sqm: float = 0.0
+    
+    # Coordinate bounds
+    north_bound: float = 0.0
+    south_bound: float = 0.0
+    east_bound: float = 0.0
+    west_bound: float = 0.0
+
+
+@dataclass  
+class PathPoint:
+    """Individual point in soldier's movement path"""
+    timestamp: datetime
+    latitude: float
+    longitude: float
+    elevation: float = 0.0
+    speed_mps: float = 0.0
+    bearing_degrees: float = 0.0
+    distance_from_previous: float = 0.0
+    elevation_change: float = 0.0
+    posture: str = "Unknown"
+    heart_rate: float = 0.0
 
 
 @dataclass
@@ -136,6 +203,431 @@ class PerformanceBreakdown:
             self.deduction_details = []
         if self.bonus_details is None:
             self.bonus_details = []
+
+
+class GeospatialAnalyzer:
+    """Analyze soldier movement patterns, elevation, and direction changes"""
+    
+    def __init__(self):
+        self.earth_radius_m = 6371000  # Earth radius in meters
+    
+    def analyze_soldier_movement(self, soldier_data: pd.DataFrame) -> Tuple[GeospatialMetrics, List[PathPoint]]:
+        """
+        Comprehensive geospatial analysis of soldier movement
+        
+        Args:
+            soldier_data: DataFrame with Latitude, Longitude, Time_Step, and optional Elevation
+            
+        Returns:
+            Tuple of (GeospatialMetrics, List[PathPoint])
+        """
+        metrics = GeospatialMetrics()
+        path_points = []
+        
+        # Check for required columns
+        required_cols = ['Latitude', 'Longitude', 'Time_Step']
+        missing_cols = [col for col in required_cols if col not in soldier_data.columns]
+        if missing_cols:
+            print(f"WARNING: Missing required columns for geospatial analysis: {missing_cols}")
+            return metrics, path_points
+        
+        # Clean and sort data
+        geo_data = soldier_data[['Time_Step', 'Latitude', 'Longitude']].copy()
+        
+        # Add optional columns if available
+        if 'Elevation' in soldier_data.columns:
+            geo_data['Elevation'] = soldier_data['Elevation']
+        else:
+            geo_data['Elevation'] = 0.0
+            
+        if 'Posture' in soldier_data.columns:
+            geo_data['Posture'] = soldier_data['Posture']
+        else:
+            geo_data['Posture'] = 'Unknown'
+            
+        if 'Heart_Rate' in soldier_data.columns:
+            geo_data['Heart_Rate'] = soldier_data['Heart_Rate']
+        else:
+            geo_data['Heart_Rate'] = 0.0
+        
+        # Remove invalid coordinates
+        geo_data = geo_data.dropna(subset=['Latitude', 'Longitude'])
+        geo_data = geo_data[(geo_data['Latitude'] != 0) & (geo_data['Longitude'] != 0)]
+        
+        if len(geo_data) < 2:
+            print("WARNING: Insufficient valid coordinate data for geospatial analysis")
+            return metrics, path_points
+        
+        # Ensure Time_Step is datetime
+        if not pd.api.types.is_datetime64_any_dtype(geo_data['Time_Step']):
+            geo_data['Time_Step'] = pd.to_datetime(geo_data['Time_Step'])
+        
+        # Sort by time
+        geo_data = geo_data.sort_values('Time_Step').reset_index(drop=True)
+        
+        # Calculate movement metrics
+        distances = []
+        bearings = []
+        speeds = []
+        elevation_changes = []
+        
+        for i in range(len(geo_data)):
+            row = geo_data.iloc[i]
+            
+            if i == 0:
+                # First point
+                distance = 0.0
+                bearing = 0.0
+                speed = 0.0
+                elevation_change = 0.0
+            else:
+                prev_row = geo_data.iloc[i-1]
+                
+                # Calculate distance
+                distance = self._haversine_distance(
+                    prev_row['Latitude'], prev_row['Longitude'],
+                    row['Latitude'], row['Longitude']
+                )
+                
+                # Calculate bearing
+                bearing = self._calculate_bearing(
+                    prev_row['Latitude'], prev_row['Longitude'],
+                    row['Latitude'], row['Longitude']
+                )
+                
+                # Calculate speed
+                time_diff = (row['Time_Step'] - prev_row['Time_Step']).total_seconds()
+                speed = distance / time_diff if time_diff > 0 else 0.0
+                
+                # Calculate elevation change
+                elevation_change = row['Elevation'] - prev_row['Elevation']
+            
+            distances.append(distance)
+            bearings.append(bearing)
+            speeds.append(speed)
+            elevation_changes.append(elevation_change)
+            
+            # Create path point
+            path_point = PathPoint(
+                timestamp=row['Time_Step'],
+                latitude=row['Latitude'],
+                longitude=row['Longitude'],
+                elevation=row['Elevation'],
+                speed_mps=speed,
+                bearing_degrees=bearing,
+                distance_from_previous=distance,
+                elevation_change=elevation_change,
+                posture=row['Posture'],
+                heart_rate=row['Heart_Rate']
+            )
+            path_points.append(path_point)
+        
+        # Calculate comprehensive metrics
+        self._calculate_distance_metrics(metrics, distances, speeds)
+        self._calculate_elevation_metrics(metrics, geo_data['Elevation'].values, elevation_changes)
+        self._calculate_direction_metrics(metrics, bearings)
+        self._calculate_movement_patterns(metrics, speeds, geo_data)
+        self._calculate_path_analysis(metrics, path_points)
+        
+        return metrics, path_points
+    
+    def _haversine_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate distance between two points using Haversine formula"""
+        lat1_rad = math.radians(lat1)
+        lon1_rad = math.radians(lon1)
+        lat2_rad = math.radians(lat2)
+        lon2_rad = math.radians(lon2)
+        
+        dlat = lat2_rad - lat1_rad
+        dlon = lon2_rad - lon1_rad
+        
+        a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+        c = 2 * math.asin(math.sqrt(a))
+        
+        return self.earth_radius_m * c
+    
+    def _calculate_bearing(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate bearing from point 1 to point 2 in degrees"""
+        lat1_rad = math.radians(lat1)
+        lat2_rad = math.radians(lat2)
+        dlon_rad = math.radians(lon2 - lon1)
+        
+        y = math.sin(dlon_rad) * math.cos(lat2_rad)
+        x = math.cos(lat1_rad) * math.sin(lat2_rad) - math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(dlon_rad)
+        
+        bearing_rad = math.atan2(y, x)
+        bearing_deg = math.degrees(bearing_rad)
+        
+        return (bearing_deg + 360) % 360  # Normalize to 0-360
+    
+    def _bearing_to_direction(self, bearing: float) -> str:
+        """Convert bearing to cardinal direction"""
+        directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+        index = round(bearing / 45) % 8
+        return directions[index]
+    
+    def _calculate_distance_metrics(self, metrics: GeospatialMetrics, distances: List[float], speeds: List[float]):
+        """Calculate distance and speed metrics"""
+        if distances:
+            metrics.total_distance_meters = sum(distances)
+        
+        if speeds:
+            valid_speeds = [s for s in speeds if s > 0]
+            if valid_speeds:
+                metrics.avg_speed_mps = np.mean(valid_speeds)
+                metrics.max_speed_mps = max(valid_speeds)
+                metrics.min_speed_mps = min(valid_speeds)
+    
+    def _calculate_elevation_metrics(self, metrics: GeospatialMetrics, elevations: np.ndarray, elevation_changes: List[float]):
+        """Calculate elevation-related metrics"""
+        if len(elevations) > 0:
+            metrics.max_elevation = float(np.max(elevations))
+            metrics.min_elevation = float(np.min(elevations))
+            metrics.avg_elevation = float(np.mean(elevations))
+        
+        if elevation_changes:
+            positive_changes = [e for e in elevation_changes if e > 0]
+            negative_changes = [e for e in elevation_changes if e < 0]
+            
+            metrics.total_elevation_gain = sum(positive_changes)
+            metrics.total_elevation_loss = abs(sum(negative_changes))
+            metrics.elevation_changes_count = len([e for e in elevation_changes if abs(e) > 1.0])  # Changes > 1 meter
+    
+    def _calculate_direction_metrics(self, metrics: GeospatialMetrics, bearings: List[float]):
+        """Calculate direction and bearing metrics"""
+        if not bearings:
+            return
+        
+        valid_bearings = [b for b in bearings if b > 0]
+        if not valid_bearings:
+            return
+        
+        # Calculate average bearing (handle circular nature)
+        x_sum = sum(math.cos(math.radians(b)) for b in valid_bearings)
+        y_sum = sum(math.sin(math.radians(b)) for b in valid_bearings)
+        
+        avg_bearing_rad = math.atan2(y_sum, x_sum)
+        metrics.avg_bearing_degrees = math.degrees(avg_bearing_rad) % 360
+        
+        # Dominant direction
+        metrics.dominant_direction = self._bearing_to_direction(metrics.avg_bearing_degrees)
+        
+        # Count significant direction changes (>45 degrees)
+        direction_changes = 0
+        for i in range(1, len(valid_bearings)):
+            bearing_diff = abs(valid_bearings[i] - valid_bearings[i-1])
+            # Handle circular nature of bearings
+            bearing_diff = min(bearing_diff, 360 - bearing_diff)
+            if bearing_diff > 45:
+                direction_changes += 1
+        
+        metrics.direction_changes_count = direction_changes
+        
+        # Calculate bearing variance
+        if len(valid_bearings) > 1:
+            # Calculate circular variance
+            r = math.sqrt(x_sum**2 + y_sum**2) / len(valid_bearings)
+            metrics.bearing_variance = 1 - r  # 0 = all bearings same, 1 = random directions
+    
+    def _calculate_movement_patterns(self, metrics: GeospatialMetrics, speeds: List[float], geo_data: pd.DataFrame):
+        """Analyze movement patterns and classify periods"""
+        if not speeds:
+            return
+        
+        # Define speed thresholds
+        stationary_threshold = 0.1  # < 0.1 m/s (basically not moving)
+        tactical_threshold = 1.5    # < 1.5 m/s (walking/tactical movement)
+        rapid_threshold = 3.0       # > 3.0 m/s (running/rapid movement)
+        
+        # Count periods
+        metrics.stationary_periods = len([s for s in speeds if s < stationary_threshold])
+        metrics.tactical_movement_periods = len([s for s in speeds if stationary_threshold <= s < rapid_threshold])
+        metrics.rapid_movement_periods = len([s for s in speeds if s >= rapid_threshold])
+    
+    def _calculate_path_analysis(self, metrics: GeospatialMetrics, path_points: List[PathPoint]):
+        """Calculate path analysis metrics"""
+        if len(path_points) < 2:
+            return
+        
+        # Calculate path linearity (straight-line distance vs actual distance)
+        start_point = path_points[0]
+        end_point = path_points[-1]
+        
+        straight_line_distance = self._haversine_distance(
+            start_point.latitude, start_point.longitude,
+            end_point.latitude, end_point.longitude
+        )
+        
+        actual_distance = sum(p.distance_from_previous for p in path_points)
+        
+        if actual_distance > 0:
+            metrics.path_linearity = straight_line_distance / actual_distance
+        
+        # Calculate bounds
+        lats = [p.latitude for p in path_points]
+        lons = [p.longitude for p in path_points]
+        
+        metrics.north_bound = max(lats)
+        metrics.south_bound = min(lats)
+        metrics.east_bound = max(lons)
+        metrics.west_bound = min(lons)
+        
+        # Rough area calculation (rectangular bounds)
+        lat_distance = self._haversine_distance(metrics.south_bound, metrics.west_bound, metrics.north_bound, metrics.west_bound)
+        lon_distance = self._haversine_distance(metrics.south_bound, metrics.west_bound, metrics.south_bound, metrics.east_bound)
+        metrics.area_covered_sqm = lat_distance * lon_distance
+    
+    def generate_path_visualization(self, path_points: List[PathPoint], callsign: str) -> str:
+        """Generate HTML visualization of soldier's movement path"""
+        if not path_points:
+            return "<p>No path data available for visualization</p>"
+        
+        if not PLOTLY_AVAILABLE:
+            return self._generate_basic_path_visualization(path_points)
+        
+        try:
+            # Create subplots
+            fig = make_subplots(
+                rows=2, cols=2,
+                subplot_titles=('Movement Path', 'Elevation Profile', 'Speed Profile', 'Bearing/Direction'),
+                specs=[[{"type": "scattermapbox"}, {"type": "scatter"}],
+                       [{"type": "scatter"}, {"type": "scatter"}]]
+            )
+            
+            # Extract data
+            lats = [p.latitude for p in path_points]
+            lons = [p.longitude for p in path_points]
+            elevations = [p.elevation for p in path_points]
+            speeds = [p.speed_mps for p in path_points]
+            bearings = [p.bearing_degrees for p in path_points]
+            times = [p.timestamp for p in path_points]
+            
+            # 1. Movement path (map)
+            fig.add_trace(
+                go.Scattermapbox(
+                    lat=lats,
+                    lon=lons,
+                    mode='markers+lines',
+                    marker=dict(size=8, color=speeds, colorscale='Viridis', showscale=True),
+                    line=dict(width=3, color='blue'),
+                    text=[f"Time: {t}<br>Speed: {s:.2f} m/s<br>Elevation: {e:.1f}m" 
+                          for t, s, e in zip(times, speeds, elevations)],
+                    name='Path',
+                    showlegend=False
+                ),
+                row=1, col=1
+            )
+            
+            # 2. Elevation profile
+            fig.add_trace(
+                go.Scatter(
+                    x=times,
+                    y=elevations,
+                    mode='lines+markers',
+                    line=dict(color='brown', width=2),
+                    marker=dict(size=4),
+                    name='Elevation',
+                    showlegend=False
+                ),
+                row=1, col=2
+            )
+            
+            # 3. Speed profile
+            fig.add_trace(
+                go.Scatter(
+                    x=times,
+                    y=speeds,
+                    mode='lines+markers',
+                    line=dict(color='green', width=2),
+                    marker=dict(size=4),
+                    name='Speed',
+                    showlegend=False
+                ),
+                row=2, col=1
+            )
+            
+            # 4. Bearing/Direction
+            fig.add_trace(
+                go.Scatter(
+                    x=times,
+                    y=bearings,
+                    mode='lines+markers',
+                    line=dict(color='red', width=2),
+                    marker=dict(size=4),
+                    name='Bearing',
+                    showlegend=False
+                ),
+                row=2, col=2
+            )
+            
+            # Update layout
+            fig.update_layout(
+                title=f'Geospatial Analysis - {callsign}',
+                height=800,
+                showlegend=False
+            )
+            
+            # Configure map
+            if lats and lons:
+                center_lat = sum(lats) / len(lats)
+                center_lon = sum(lons) / len(lons)
+                
+                fig.update_layout(
+                    mapbox=dict(
+                        style="open-street-map",
+                        center=dict(lat=center_lat, lon=center_lon),
+                        zoom=15
+                    )
+                )
+            
+            # Update axes labels
+            fig.update_xaxes(title_text="Time", row=1, col=2)
+            fig.update_yaxes(title_text="Elevation (m)", row=1, col=2)
+            fig.update_xaxes(title_text="Time", row=2, col=1)
+            fig.update_yaxes(title_text="Speed (m/s)", row=2, col=1)
+            fig.update_xaxes(title_text="Time", row=2, col=2)
+            fig.update_yaxes(title_text="Bearing (degrees)", row=2, col=2)
+            
+            return fig.to_html(include_plotlyjs='cdn', div_id=f"geospatial_plot_{callsign}")
+            
+        except Exception as e:
+            print(f"ERROR: Failed to generate Plotly visualization: {e}")
+            return self._generate_basic_path_visualization(path_points)
+    
+    def _generate_basic_path_visualization(self, path_points: List[PathPoint]) -> str:
+        """Generate basic HTML table visualization when Plotly is not available"""
+        html = """
+        <div class="alert alert-info">
+            <strong>Basic Path Summary:</strong> Interactive visualization requires Plotly. 
+            Install with: <code>pip install plotly</code>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                <th style="padding: 12px; text-align: left;">Time</th>
+                <th style="padding: 12px; text-align: left;">Position</th>
+                <th style="padding: 12px; text-align: left;">Speed (m/s)</th>
+                <th style="padding: 12px; text-align: left;">Elevation (m)</th>
+                <th style="padding: 12px; text-align: left;">Bearing</th>
+            </tr>
+        """
+        
+        # Show every 10th point to avoid overwhelming the table
+        sample_points = path_points[::max(1, len(path_points)//20)]
+        
+        for i, point in enumerate(sample_points):
+            row_style = "background: #ffffff;" if i % 2 == 0 else "background: #f8f9fa;"
+            html += f"""
+            <tr style="{row_style} border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 8px;">{point.timestamp.strftime('%H:%M:%S')}</td>
+                <td style="padding: 8px;">{point.latitude:.6f}, {point.longitude:.6f}</td>
+                <td style="padding: 8px;">{point.speed_mps:.2f}</td>
+                <td style="padding: 8px;">{point.elevation:.1f}</td>
+                <td style="padding: 8px;">{point.bearing_degrees:.0f}°</td>
+            </tr>
+            """
+        
+        html += "</table>"
+        return html
 
 
 class BattleTimelineAnalyzer:
@@ -331,8 +823,16 @@ class PerformanceScorer:
         
         # Get battle timeline data
         pre_battle_data, battle_data = self.battle_analyzer.get_battle_data()
-        soldier_pre_battle = pre_battle_data[pre_battle_data['Callsign'] == callsign]
-        soldier_battle = battle_data[battle_data['Callsign'] == callsign]
+        
+        # PATCHED: Find correct callsign column
+        callsign_col = self._find_callsign_column(pre_battle_data)
+        if callsign_col is None:
+            callsign_col = self._find_callsign_column(battle_data)
+        if callsign_col is None:
+            callsign_col = 'Callsign'  # Default fallback
+        
+        soldier_pre_battle = pre_battle_data[pre_battle_data[callsign_col] == callsign] if len(pre_battle_data) > 0 else pd.DataFrame()
+        soldier_battle = battle_data[battle_data[callsign_col] == callsign] if len(battle_data) > 0 else pd.DataFrame()
         
         # Physical performance scoring
         physical_score = self._score_physical_performance(soldier_pre_battle, soldier_battle, breakdown)
@@ -355,12 +855,33 @@ class PerformanceScorer:
         ])))
         
         breakdown.final_score = final_score
-        breakdown.total_deductions = sum([float(d.split('-')[1].split(' ')[0]) 
-                                        for d in breakdown.deduction_details if '-' in d])
-        breakdown.total_bonuses = sum([float(b.split('+')[1].split(' ')[0]) 
-                                     for b in breakdown.bonus_details if '+' in b])
+        try:
+            breakdown.total_deductions = sum([float(d.split('-')[1].split(' ')[0]) 
+                                            for d in breakdown.deduction_details if '-' in d])
+            breakdown.total_bonuses = sum([float(b.split('+')[1].split(' ')[0]) 
+                                         for b in breakdown.bonus_details if '+' in b])
+        except (ValueError, IndexError):
+            # Handle cases where parsing fails
+            breakdown.total_deductions = 0.0
+            breakdown.total_bonuses = 0.0
         
         return final_score, breakdown
+    
+    def _find_callsign_column(self, data: pd.DataFrame) -> Optional[str]:
+        """PATCHED: Find the correct callsign column in the data"""
+        if data.empty:
+            return None
+        
+        if 'Callsign' in data.columns:
+            return 'Callsign'
+        elif 'callsign' in data.columns:
+            return 'callsign'
+        else:
+            # Look for any column that might contain callsigns
+            possible_cols = [col for col in data.columns if 'call' in col.lower()]
+            if possible_cols:
+                return possible_cols[0]
+        return None
     
     def _score_physical_performance(self, pre_battle: pd.DataFrame, battle: pd.DataFrame, 
                                   breakdown: PerformanceBreakdown) -> float:
@@ -514,6 +1035,8 @@ class ReportGenerator:
     """
     ICD-compliant report generator implementing all requirements
     UPDATED: Compatible with original main.py initialization pattern
+    PATCHED: Fixed callsign column access issues
+    ENHANCED: Added geospatial analysis capabilities
     """
     
     def __init__(self, event_bus, html_renderer):
@@ -534,6 +1057,9 @@ class ReportGenerator:
         self.battle_analyzer: Optional[BattleTimelineAnalyzer] = None
         self.safety_analyzer: Optional[SafetyAnalyzer] = None
         self.performance_scorer: Optional[PerformanceScorer] = None
+        
+        # ENHANCED: Add geospatial analyzer
+        self.geospatial_analyzer: Optional[GeospatialAnalyzer] = None
         
         # Setup event handlers
         self._setup_event_handlers()
@@ -609,6 +1135,9 @@ class ReportGenerator:
                 elif hasattr(dataset, 'df'):
                     dataframe = dataset.df  # Another possible name
                     print(f"DEBUG: Found dataset.df")
+                elif hasattr(dataset, 'raw_dataframe'):
+                    dataframe = dataset.raw_dataframe  # PATCHED: Check for raw_dataframe
+                    print(f"DEBUG: Found dataset.raw_dataframe")
                 else:
                     # If dataset is already a DataFrame
                     import pandas as pd
@@ -628,12 +1157,24 @@ class ReportGenerator:
                 if dataframe is not None:
                     self.data = dataframe
                     print(f"DEBUG: Successfully extracted dataframe - shape: {self.data.shape}")
+                    print(f"DEBUG: Available columns: {list(self.data.columns)}")
+                    
+                    # PATCHED: Debug callsign column
+                    callsign_col = self._find_callsign_column(self.data)
+                    if callsign_col:
+                        unique_callsigns = self.data[callsign_col].unique()
+                        print(f"DEBUG: Found callsign column '{callsign_col}' with {len(unique_callsigns)} unique values: {list(unique_callsigns)[:10]}")
+                    else:
+                        print("DEBUG: No callsign column found!")
                     
                     # Initialize analyzers with the data
                     if len(self.data) > 0:
                         self.battle_analyzer = BattleTimelineAnalyzer(self.data)
                         self.safety_analyzer = SafetyAnalyzer()
                         self.performance_scorer = PerformanceScorer(self.battle_analyzer)
+                        
+                        # ENHANCED: Initialize geospatial analyzer
+                        self.geospatial_analyzer = GeospatialAnalyzer()
                         
                         self.logger.info(f"Enhanced report generator initialized with {len(self.data)} records")
                         print(f"DEBUG: Enhanced report generator ready with {len(self.data)} records")
@@ -657,6 +1198,22 @@ class ReportGenerator:
             import traceback
             print(f"DEBUG: Full traceback: {traceback.format_exc()}")
             self._publish_error(e, "data_loaded_handling")
+    
+    def _find_callsign_column(self, data: pd.DataFrame) -> Optional[str]:
+        """PATCHED: Find the correct callsign column in the data"""
+        if data.empty:
+            return None
+        
+        if 'Callsign' in data.columns:
+            return 'Callsign'
+        elif 'callsign' in data.columns:
+            return 'callsign'
+        else:
+            # Look for any column that might contain callsigns
+            possible_cols = [col for col in data.columns if 'call' in col.lower()]
+            if possible_cols:
+                return possible_cols[0]
+        return None
     
     def _handle_analysis_completed(self, event) -> None:
         """Handle analysis completion event"""
@@ -758,19 +1315,52 @@ class ReportGenerator:
         return (self.data is not None and 
                 self.battle_analyzer is not None and 
                 self.safety_analyzer is not None and 
-                self.performance_scorer is not None)
+                self.performance_scorer is not None and
+                self.geospatial_analyzer is not None)  # ENHANCED: Include geospatial analyzer
         
     def generate_individual_report(self, callsign: str, output_path: Path) -> str:
         """
         Generate comprehensive individual soldier report per ICD FR-024 through FR-028
+        PATCHED: Fixed callsign column access issues
+        ENHANCED: Added geospatial analysis
         """
         if not self._is_ready():
             raise ValueError("Report generator not ready - no data loaded")
-            
-        soldier_data = self.data[self.data['Callsign'] == callsign].copy()
+        
+        # PATCHED: Debug and find correct callsign column
+        print(f"DEBUG: Available columns: {list(self.data.columns)}")
+        print(f"DEBUG: Looking for callsign: {callsign}")
+        print(f"DEBUG: Data shape: {self.data.shape}")
+        
+        # Find the correct callsign column (handle both original and mapped names)
+        callsign_col = self._find_callsign_column(self.data)
+        
+        if callsign_col is None:
+            available_cols = ', '.join(self.data.columns)
+            raise ValueError(f"No callsign column found. Available columns: {available_cols}")
+        
+        print(f"DEBUG: Using callsign column: {callsign_col}")
+        print(f"DEBUG: Unique callsigns in data: {self.data[callsign_col].unique()[:10]}")  # Show first 10
+        
+        # Filter data for the specific soldier
+        soldier_data = self.data[self.data[callsign_col] == callsign].copy()
         
         if len(soldier_data) == 0:
-            raise ValueError(f"No data found for soldier {callsign}")
+            # Try case-insensitive match
+            soldier_data = self.data[self.data[callsign_col].str.upper() == callsign.upper()].copy()
+            
+            if len(soldier_data) == 0:
+                available_callsigns = self.data[callsign_col].unique()
+                raise ValueError(f"No data found for soldier {callsign}. Available callsigns: {list(available_callsigns)[:20]}")
+        
+        print(f"DEBUG: Found {len(soldier_data)} records for {callsign}")
+        
+        # Ensure the soldier_data uses 'Callsign' column name for consistency with the rest of the code
+        if callsign_col != 'Callsign':
+            soldier_data = soldier_data.rename(columns={callsign_col: 'Callsign'})
+        
+        # ENHANCED: Perform geospatial analysis
+        geo_metrics, path_points = self.geospatial_analyzer.analyze_soldier_movement(soldier_data)
         
         # Comprehensive analysis
         comprehensive_stats = self._calculate_comprehensive_stats(callsign, soldier_data)
@@ -778,9 +1368,13 @@ class ReportGenerator:
         performance_score, breakdown = self.performance_scorer.calculate_performance_score(
             callsign, soldier_data, safety_analysis)
         
+        # ENHANCED: Generate path visualization
+        path_html = self.geospatial_analyzer.generate_path_visualization(path_points, callsign)
+        
         # Generate HTML report
-        html_content = self._generate_icd_compliant_html(
-            callsign, comprehensive_stats, safety_analysis, performance_score, breakdown)
+        html_content = self._generate_enhanced_html_report(
+            callsign, comprehensive_stats, safety_analysis, performance_score, 
+            breakdown, geo_metrics, path_points, path_html)
         
         # Save report
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -791,6 +1385,230 @@ class ReportGenerator:
             f.write(html_content)
         
         return str(full_path)
+    
+    def _generate_enhanced_html_report(self, callsign: str, stats: Dict[str, Any], 
+                                     safety_analysis: SafetyMetrics, performance_score: float,
+                                     breakdown: PerformanceBreakdown, geo_metrics: GeospatialMetrics, 
+                                     path_points: List[PathPoint], path_html: str) -> str:
+        """Generate enhanced HTML report with geospatial analysis"""
+        
+        # Get the original HTML report components
+        original_html = self._generate_icd_compliant_html(
+            callsign, stats, safety_analysis, performance_score, breakdown
+        )
+        
+        # Generate geospatial sections
+        geospatial_section = self._generate_geospatial_section(geo_metrics, path_points)
+        
+        # Insert geospatial analysis before the recommendations section
+        insertion_point = original_html.find('<!-- Recommendations -->')
+        if insertion_point == -1:
+            insertion_point = original_html.find('<div class="section">\n                    <h2>💡 Recommendations')
+        
+        if insertion_point != -1:
+            enhanced_html = (
+                original_html[:insertion_point] + 
+                geospatial_section + 
+                f'\n                <!-- Path Visualization -->\n                <div class="section">\n                    <h2>🗺️ Movement Path Visualization</h2>\n                    {path_html}\n                </div>\n                ' +
+                original_html[insertion_point:]
+            )
+        else:
+            # Fallback: append to end
+            footer_start = original_html.find('<div class="footer">')
+            if footer_start != -1:
+                enhanced_html = (
+                    original_html[:footer_start] + 
+                    geospatial_section + 
+                    f'\n                <div class="section">\n                    <h2>🗺️ Movement Path Visualization</h2>\n                    {path_html}\n                </div>\n                ' +
+                    original_html[footer_start:]
+                )
+            else:
+                enhanced_html = original_html + geospatial_section + path_html
+        
+        return enhanced_html
+    
+    def _generate_geospatial_section(self, geo_metrics: GeospatialMetrics, path_points: List[PathPoint]) -> str:
+        """Generate geospatial analysis HTML section"""
+        
+        # Movement classification
+        if geo_metrics.avg_speed_mps < 0.5:
+            movement_class = "Mostly Stationary"
+            movement_color = "#e67e22"
+        elif geo_metrics.avg_speed_mps < 1.5:
+            movement_class = "Tactical Movement"
+            movement_color = "#f39c12"
+        elif geo_metrics.avg_speed_mps < 3.0:
+            movement_class = "Active Movement"
+            movement_color = "#27ae60"
+        else:
+            movement_class = "Rapid Movement"
+            movement_color = "#e74c3c"
+        
+        # Path efficiency assessment
+        if geo_metrics.path_linearity > 0.8:
+            path_efficiency = "Highly Efficient"
+            efficiency_color = "#27ae60"
+        elif geo_metrics.path_linearity > 0.6:
+            path_efficiency = "Moderately Efficient"
+            efficiency_color = "#f39c12"
+        else:
+            path_efficiency = "Circuitous Route"
+            efficiency_color = "#e74c3c"
+        
+        # Elevation assessment
+        if geo_metrics.total_elevation_gain > 50:
+            elevation_challenge = "Significant Elevation Gain"
+        elif geo_metrics.total_elevation_gain > 20:
+            elevation_challenge = "Moderate Elevation Change"
+        else:
+            elevation_challenge = "Minimal Elevation Change"
+        
+        html = f"""
+                <!-- Geospatial Analysis -->
+                <div class="section">
+                    <h2>🌍 Geospatial & Movement Analysis</h2>
+                    
+                    <div class="alert alert-info">
+                        <strong>Movement Summary:</strong> Soldier moved <strong>{geo_metrics.total_distance_meters:.0f} meters</strong> 
+                        over the mission with <strong>{movement_class}</strong> pattern. 
+                        Primary direction was <strong>{geo_metrics.dominant_direction}</strong> with 
+                        <strong>{path_efficiency}</strong> route efficiency.
+                    </div>
+                    
+                    <h3>📏 Distance & Speed Metrics</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.total_distance_meters:.0f}m</div>
+                            <div class="metric-label">Total Distance</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" style="color: {movement_color};">{geo_metrics.avg_speed_mps:.2f} m/s</div>
+                            <div class="metric-label">Average Speed</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.max_speed_mps:.2f} m/s</div>
+                            <div class="metric-label">Maximum Speed</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" style="color: {efficiency_color};">{geo_metrics.path_linearity:.2f}</div>
+                            <div class="metric-label">Path Efficiency</div>
+                        </div>
+                    </div>
+                    
+                    <h3>⛰️ Elevation Analysis</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.total_elevation_gain:.1f}m</div>
+                            <div class="metric-label">Elevation Gain</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.total_elevation_loss:.1f}m</div>
+                            <div class="metric-label">Elevation Loss</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.max_elevation:.1f}m</div>
+                            <div class="metric-label">Max Elevation</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.elevation_changes_count}</div>
+                            <div class="metric-label">Elevation Changes</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Terrain Assessment:</strong> {elevation_challenge} - 
+                        Total vertical movement of {geo_metrics.total_elevation_gain + geo_metrics.total_elevation_loss:.1f} meters
+                    </div>
+                    
+                    <h3>🧭 Direction & Navigation</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.dominant_direction}</div>
+                            <div class="metric-label">Dominant Direction</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.avg_bearing_degrees:.0f}°</div>
+                            <div class="metric-label">Average Bearing</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.direction_changes_count}</div>
+                            <div class="metric-label">Direction Changes</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.bearing_variance:.2f}</div>
+                            <div class="metric-label">Route Variance</div>
+                        </div>
+                    </div>
+                    
+                    <h3>🏃 Movement Pattern Analysis</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.stationary_periods}</div>
+                            <div class="metric-label">Stationary Periods</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.tactical_movement_periods}</div>
+                            <div class="metric-label">Tactical Movement</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.rapid_movement_periods}</div>
+                            <div class="metric-label">Rapid Movement</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{geo_metrics.area_covered_sqm:.0f}m²</div>
+                            <div class="metric-label">Area Covered</div>
+                        </div>
+                    </div>
+                    
+                    {self._generate_movement_recommendations(geo_metrics)}
+                </div>
+        """
+        
+        return html
+    
+    def _generate_movement_recommendations(self, geo_metrics: GeospatialMetrics) -> str:
+        """Generate movement-specific recommendations"""
+        recommendations = []
+        
+        # Speed analysis
+        if geo_metrics.avg_speed_mps < 0.3:
+            recommendations.append("🐌 <strong>Mobility:</strong> Consider increasing movement speed during appropriate tactical phases")
+        elif geo_metrics.avg_speed_mps > 4.0:
+            recommendations.append("🏃 <strong>Pace:</strong> Evaluate if rapid movement was tactically necessary - consider energy conservation")
+        
+        # Path efficiency
+        if geo_metrics.path_linearity < 0.5:
+            recommendations.append("🗺️ <strong>Navigation:</strong> Route efficiency could be improved - review navigation procedures")
+        elif geo_metrics.path_linearity > 0.9:
+            recommendations.append("📍 <strong>Tactical Movement:</strong> Very direct route - ensure tactical considerations (cover, concealment) were addressed")
+        
+        # Direction changes
+        if geo_metrics.direction_changes_count > 20:
+            recommendations.append("🧭 <strong>Navigation:</strong> Frequent direction changes detected - review navigation planning and execution")
+        
+        # Elevation considerations
+        if geo_metrics.total_elevation_gain > 100:
+            recommendations.append("⛰️ <strong>Conditioning:</strong> Significant elevation gain - ensure physical conditioning appropriate for terrain")
+        
+        # Movement patterns
+        total_periods = geo_metrics.stationary_periods + geo_metrics.tactical_movement_periods + geo_metrics.rapid_movement_periods
+        if total_periods > 0:
+            stationary_ratio = geo_metrics.stationary_periods / total_periods
+            
+            if stationary_ratio > 0.7:
+                recommendations.append("⏱️ <strong>Activity:</strong> High proportion of stationary periods - consider increasing tactical mobility")
+            elif stationary_ratio < 0.1:
+                recommendations.append("🎯 <strong>Tactics:</strong> Minimal stationary periods - ensure adequate observation and security halts")
+        
+        if not recommendations:
+            recommendations.append("✅ <strong>Movement:</strong> Movement patterns within acceptable tactical parameters")
+        
+        html = '<h4>🎯 Movement Recommendations</h4><div class="breakdown-section">'
+        for rec in recommendations:
+            html += f'<div class="breakdown-item">{rec}</div>'
+        html += '</div>'
+        
+        return html
     
     def _calculate_comprehensive_stats(self, callsign: str, soldier_data: pd.DataFrame) -> Dict[str, Any]:
         """Calculate comprehensive statistics per ICD data requirements"""
@@ -1583,18 +2401,23 @@ class ReportGenerator:
         """Publish status message via event bus"""
         try:
             if hasattr(self.event_bus, 'publish'):
-                from src.core.events import Event, EventType
-                
-                status_event = Event(
-                    type=EventType.STATUS_UPDATE.value,
-                    data={
-                        'component': self.component_id,
-                        'message': message,
-                        'level': level
-                    },
-                    source=self.component_id
-                )
-                self.event_bus.publish(status_event)
+                # Try to import the events, but handle gracefully if not available
+                try:
+                    from src.core.events import Event, EventType
+                    
+                    status_event = Event(
+                        type=EventType.STATUS_UPDATE.value,
+                        data={
+                            'component': self.component_id,
+                            'message': message,
+                            'level': level
+                        },
+                        source=self.component_id
+                    )
+                    self.event_bus.publish(status_event)
+                except ImportError:
+                    # Fallback - just log the status
+                    self.logger.info(f"Status: {message}")
         except Exception as e:
             self.logger.warning(f"Could not publish status: {e}")
     
@@ -1602,19 +2425,24 @@ class ReportGenerator:
         """Publish error via event bus"""
         try:
             if hasattr(self.event_bus, 'publish'):
-                from src.core.events import Event, EventType
-                
-                error_event = Event(
-                    type=EventType.ERROR_OCCURRED.value,
-                    data={
-                        'component': self.component_id,
-                        'error': str(error),
-                        'error_type': type(error).__name__,
-                        'context': context
-                    },
-                    source=self.component_id
-                )
-                self.event_bus.publish(error_event)
+                # Try to import the events, but handle gracefully if not available
+                try:
+                    from src.core.events import Event, EventType
+                    
+                    error_event = Event(
+                        type=EventType.ERROR_OCCURRED.value,
+                        data={
+                            'component': self.component_id,
+                            'error': str(error),
+                            'error_type': type(error).__name__,
+                            'context': context
+                        },
+                        source=self.component_id
+                    )
+                    self.event_bus.publish(error_event)
+                except ImportError:
+                    # Fallback - just log the error
+                    self.logger.error(f"Error in {context}: {error}")
         except Exception as e:
             self.logger.warning(f"Could not publish error: {e}")
     
